@@ -1,4 +1,6 @@
-# ------------------패킷 종류 상수------------------
+import struct
+
+# ---------------패킷 종류 상수 대응표---------------
 # TCP 패킷 (접속 및 게임 진행 제어)
 PKT_JOIN        = 1   # 접속 요청
 PKT_ASSIGN      = 2   # 플레이어 번호 통보
@@ -49,11 +51,20 @@ FLAG_HITTED     =0x04   # 맞은 상태
 FLAG_DAMAGEABLE =0x08   # 데미지를 받을 수 있는 상태
 
 
-def pack_header(size, pkt_type):
-    pass
+# UDP 패킷 헤더 (size, pkt_type) <-> buf
+HEADER_FORMAT = "!HB"   # 빅 앤디언, 부호없는 2바이트Unsigned Short , 부호없는 1바이트Unsigned Char
+HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
 
+# 직렬화
+def pack_header(size, pkt_type):
+    return struct.pack(size, pkt_type)
+# 역직렬화
 def unpack_header(buf):
-    pass
+    # 
+    if len(buf) < HEADER_SIZE:# 검사
+        return None
+    size, pkt_type = struct.unpack(HEADER_FORMAT,buf[:HEADER_SIZE])
+    return size, pkt_type
 
 def pack_tick_c2s(seq, keys, x, y, face, state, frame, flag):
     pass
