@@ -1,5 +1,22 @@
+import socket
+import threading
+import queue
+import struct
+
+import threading
+import net_state
 # 네트워크 통신 클래스
 class NetClient:
+ def __init__(self):
+  self.tcp_socket=None
+  self.udp_socket=None
+  # 통신 중
+  self.runnind=False
+  # 통신 스레드
+  self.tcp_thread = None
+  self.udp_thread = None
+  self.send_thread = None
+
  def connect(ip, port):
   pass
  def disconnect():
