@@ -66,4 +66,142 @@ struct PacketHeader {
     uint16_t size; // 본문 바이트 수 (머리 제외)
     uint8_t  type; // PacketType 값
 };
+// ── 5. 본문 구조체 ───────────────────────────────────────────
+// PKT_JOIN  : 본문 0바이트 — 구조체 없음
+// PKT_LEAVE : 본문 0바이트 — 구조체 없음
+
+struct AssignBody {
+    uint8_t player;   // 플레이어 번호
+    void Hton() {}
+    void Ntoh() {}
+};
+
+struct SelectBody {
+    uint8_t charNum;  // 선택 캐릭터 번호
+    void Hton() {}
+    void Ntoh() {}
+};
+
+struct MatchStartBody {
+    uint8_t charNum[2]; // 양 플레이어 캐릭터 번호
+    void Hton() {}
+    void Ntoh() {}
+};
+
+struct RoundStartBody {
+    int16_t startX[2]; // 초기 X 좌표
+    uint8_t hp[2];     // 초기 HP
+    uint8_t round;     // 라운드 번호
+    void Hton() {
+        startX[0] = (int16_t)htons((uint16_t)startX[0]);
+        startX[1] = (int16_t)htons((uint16_t)startX[1]);
+    }
+    void Ntoh() {
+        startX[0] = (int16_t)ntohs((uint16_t)startX[0]);
+        startX[1] = (int16_t)ntohs((uint16_t)startX[1]);
+    }
+};
+
+struct HitReportBody {
+    uint8_t victim;   // 맞은 플레이어
+    uint8_t attacker; // 때린 플레이어
+    uint8_t damage;   // 데미지
+    uint8_t guard;    // 가드 여부
+    void Hton() {}
+    void Ntoh() {}
+};
+
+struct HitResultBody {
+    uint8_t victim;   // 맞은 플레이어
+    uint8_t attacker; // 때린 플레이어
+    uint8_t damage;   // 확정 데미지
+    uint8_t hp;       // 맞은 쪽 남은 HP
+    int16_t knockX;   // 넉백 X
+    void Hton() {
+        knockX = (int16_t)htons((uint16_t)knockX);
+    }
+    void Ntoh() {
+        knockX = (int16_t)ntohs((uint16_t)knockX);
+    }
+};
+
+struct RoundEndBody {
+    uint8_t winner;      // 승자 플레이어 번호
+    uint8_t winCount[2]; // 각 플레이어 누적 승수
+    uint8_t matchOver;   // 매치 종료 여부
+    void Hton() {}
+    void Ntoh() {}
+};
+
+struct TickC2SBody {
+    uint16_t seq;    // 시퀀스 번호
+    uint8_t  player; // 플레이어 번호
+    uint8_t  keys;   // KeyMask 비트 조합
+    int16_t  x;      // X 좌표
+    int16_t  y;      // Y 좌표
+    int8_t   face;   // 방향
+    uint8_t  state;  // ActionId 값
+    uint8_t  frame;  // 프레임 번호
+    uint8_t  flag;   // StateFlag 비트 조합
+    void Hton() {
+        seq = htons(seq);
+        x   = (int16_t)htons((uint16_t)x);
+        y   = (int16_t)htons((uint16_t)y);
+    }
+    void Ntoh() {
+        seq = ntohs(seq);
+        x   = (int16_t)ntohs((uint16_t)x);
+        y   = (int16_t)ntohs((uint16_t)y);
+    }
+};
+
+struct PlayerState {        // TickS2CBody 에서만 사용
+    int16_t x;      // X 좌표
+    int16_t y;      // Y 좌표
+    int8_t  face;   // 방향
+    uint8_t state;  // ActionId 값
+    uint8_t frame;  // 프레임 번호
+    uint8_t flag;   // StateFlag 비트 조합
+    void Hton() {
+        x = (int16_t)htons((uint16_t)x);
+        y = (int16_t)htons((uint16_t)y);
+    }
+    void Ntoh() {
+        x = (int16_t)ntohs((uint16_t)x);
+        y = (int16_t)ntohs((uint16_t)y);
+    }
+};
+
+struct TickS2CBody {
+    uint16_t    seq;      // 시퀀스 번호
+    PlayerState p[2];     // 양 플레이어 상태
+    uint8_t     hp[2];    // 양 플레이어 HP
+    uint16_t    timeLeft; // 남은 시간
+    void Hton() {
+        seq = htons(seq);
+        p[0].Hton();
+        p[1].Hton();
+        timeLeft = htons(timeLeft);
+    }
+    void Ntoh() {
+        seq = ntohs(seq);
+        p[0].Ntoh();
+        p[1].Ntoh();
+        timeLeft = ntohs(timeLeft);
+    }
+};
+
 #pragma pack()
+
+// ── 6. 크기 검증 ─────────────────────────────────────────────
+static_assert(sizeof(PacketHeader)   == 3,  "PacketHeader size mismatch");
+static_assert(sizeof(AssignBody)     == 1,  "AssignBody size mismatch");
+static_assert(sizeof(SelectBody)     == 1,  "SelectBody size mismatch");
+static_assert(sizeof(MatchStartBody) == 2,  "MatchStartBody size mismatch");
+static_assert(sizeof(RoundStartBody) == 7,  "RoundStartBody size mismatch");
+static_assert(sizeof(HitReportBody)  == 4,  "HitReportBody size mismatch");
+static_assert(sizeof(HitResultBody)  == 6,  "HitResultBody size mismatch");
+static_assert(sizeof(RoundEndBody)   == 4,  "RoundEndBody size mismatch");
+static_assert(sizeof(TickC2SBody)    == 12, "TickC2SBody size mismatch");
+static_assert(sizeof(PlayerState)    == 8,  "PlayerState size mismatch");
+static_assert(sizeof(TickS2CBody)    == 22, "TickS2CBody size mismatch");
