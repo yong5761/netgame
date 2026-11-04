@@ -92,3 +92,10 @@ bool GameServer::Init(unsigned short port)
     printf("[Init] 서버 준비 완료 — TCP/UDP 포트 %u\n", m_port);
     return true;
 }
+
+void GameServer::Run()
+{
+    printf("서버 대기 중. 종료하려면 엔터\n");
+    char buf[4];
+    fgets(buf, sizeof(buf), stdin);
+}
