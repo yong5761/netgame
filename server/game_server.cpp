@@ -99,3 +99,26 @@ void GameServer::Run()
     char buf[4];
     fgets(buf, sizeof(buf), stdin);
 }
+
+void GameServer::AcceptLoop()
+{
+    // TODO: 다음 단계에서 클라이언트 접속 수락 루프를 구현한다
+}
+
+void GameServer::UdpRecvLoop()
+{
+    // TODO: 다음 단계에서 UDP 수신 루프를 구현한다
+}
+
+void GameServer::Shutdown()
+{
+    if (m_udpSock != INVALID_SOCKET) {
+        closesocket(m_udpSock);
+        m_udpSock = INVALID_SOCKET;
+    }
+    if (m_listenSock != INVALID_SOCKET) {
+        closesocket(m_listenSock);
+        m_listenSock = INVALID_SOCKET;
+    }
+    WSACleanup();
+}
