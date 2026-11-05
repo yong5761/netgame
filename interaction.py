@@ -88,6 +88,14 @@ class HitBoxManager:
             return False
         return True
 
+    def apply_local_hit(self, attacker, target):
+        target.is_hitted = True
+        attacker.is_succeeded_attack = True
+        target.hp -= attacker.atk
+        target.get_damage = False
+        target.xPos += (40 * attacker.face_dir)  # 넉백 효과
+        target.state_machine.handle_state_event(('HITTED', None))
+
     def detect_attack_hits(self):
         body_boxes = [hb for hb in self.hitboxes if hb.hb_kind == 'body']
         body_box_1, body_box_2 = body_boxes[0], body_boxes[1]
