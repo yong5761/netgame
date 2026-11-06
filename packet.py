@@ -57,10 +57,9 @@ HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
 
 # 직렬화
 def pack_header(size, pkt_type):
-    return struct.pack(size, pkt_type)
+    return struct.pack(HEADER_FORMAT, size, pkt_type)
 # 역직렬화
 def unpack_header(buf):
-    # 
     if len(buf) < HEADER_SIZE:# 검사
         return None
     size, pkt_type = struct.unpack(HEADER_FORMAT,buf[:HEADER_SIZE])
