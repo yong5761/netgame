@@ -1,8 +1,11 @@
 #include "game_server.h"
+#include <windows.h>
 #include <cstdlib>
 
 int main()
 {
+    SetConsoleOutputCP(CP_UTF8);
+
     GameServer server;
 
     if (!server.Init(9000)) {
