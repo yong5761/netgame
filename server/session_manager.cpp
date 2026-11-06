@@ -59,8 +59,10 @@ void SessionManager::SendTo(int playerNum, const char* buf, int len) {
     LeaveCriticalSection(&m_sessionLock);
 
     // 잠금 밖에서 send
-    if (sock != INVALID_SOCKET)
-        send(sock, buf, len, 0);
+    if (sock != INVALID_SOCKET) {
+        if (send(sock, buf, len, 0) == SOCKET_ERROR)
+            printf("[SendTo] Player %d send 실패: %d\n", playerNum, WSAGetLastError());
+    }
 }
 
 void SessionManager::SendToAll(const char* buf, int len) {
@@ -75,7 +77,9 @@ void SessionManager::SendToAll(const char* buf, int len) {
 
     // 잠금 밖에서 send
     for (int i = 0; i < 2; i++) {
-        if (socks[i] != INVALID_SOCKET)
-            send(socks[i], buf, len, 0);
+        if (socks[i] != INVALID_SOCKET) {
+            if (send(socks[i], buf, len, 0) == SOCKET_ERROR)
+                printf("[SendToAll] Player %d send 실패: %d\n", i, WSAGetLastError());
+        }
     }
 }
