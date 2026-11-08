@@ -7,7 +7,6 @@ import threading
 import net_state
 import packet
 
-
 # 네트워크 통신 클래스
 class NetClient:
  def __init__(self):
@@ -70,9 +69,33 @@ class NetClient:
      self.udp_sock = None
 
  def send_packet(self, pkt_type, body): # TCP
-  pass
+  if not net_state.is_connected or self.tcp_sock is None:
+   return False
+  try:
+   # 헤더 생성 (본문 크기 + 패킷 종류)
+   header = packet.pack_header(len(body), pkt_type)
+   send_data = header + body
+
+   self.tcp_sock.sendall(send_data)# TCP 전송
+   return True
+  except OSError as e:
+   print(f"TCP 전송 오류: {e}")
+   return False
+
  def send_tick(self, body): # UDP
-  pass
+  if not net_state.is_connected or self.udp_sock is None:
+   return False
+  try:
+   # 틱 패킷 헤더 생성
+   header = packet.pack_header(len(body), packet.PKT_TICK_C2S)
+   send_data = header + body
+
+   self.udp_sock.sendto(send_data, (net_state.server_ip, net_state.server_port))# UDP 전송
+   return True
+  except OSError as e:
+     print(f"UDP 전송 오류: {e}")
+     return False
+
  def pop_packet(self):# 수신 큐에서 패킷 가져오기
  # 가장 먼저 들어온 패킷 반환
     try:
@@ -87,6 +110,7 @@ class NetClient:
              return None
          data.extend(chunk)
      return bytes(data)
+
  def _tcp_recv_loop(self):# TCP 수신 스레드용 함수
   while self.running:
      try:
@@ -101,6 +125,7 @@ class NetClient:
      except OSError:
          break
   self.disconnect()
+
  def _udp_recv_loop(self):# UDP 수신 스레드용 함수
   pass
  def _send_loop(self):# 발신
