@@ -5,13 +5,16 @@ import struct
 
 import threading
 import net_state
+import packet
+
+
 # 네트워크 통신 클래스
 class NetClient:
  def __init__(self):
-  self.tcp_socket=None
-  self.udp_socket=None
+  self.tcp_socket = None
+  self.udp_socket = None
   # 통신 중
-  self.running=False
+  self.running = False
   # 통신 스레드
   self.tcp_thread = None
   self.udp_thread = None
@@ -72,9 +75,29 @@ class NetClient:
   pass
  def pop_packet(self):# 수신 큐에서 패킷 가져오기
   pass
- def _tcp_recv_loop(self):# TCP 수신
-  pass
- def _udp_recv_loop(self):# UDP 수신
+ def _recv_exact(self, size):# 헤더 받기
+     data = bytearray()
+     while len(data) < size:
+         chunk = self.tcp_sock.recv(size - len(data))
+         if not chunk:
+             return None
+         data.extend(chunk)
+     return bytes(data)
+ def _tcp_recv_loop(self):# TCP 수신 스레드용 함수
+  while self.running:
+     try:
+         header = self._recv_exact(packet.HEADER_SIZE)
+         if header is None:
+             break
+         packet.unpack_header(header)
+         data = self.tcp_sock.recv(32)
+         if not data:
+             break
+         net_state.recv_queue.put(data)
+     except OSError:
+         break
+  self.disconnect()
+ def _udp_recv_loop(self):# UDP 수신 스레드용 함수
   pass
  def _send_loop(self):# 발신
   pass

@@ -51,7 +51,7 @@ FLAG_HITTED     =0x04   # 맞은 상태
 FLAG_DAMAGEABLE =0x08   # 데미지를 받을 수 있는 상태
 
 
-# UDP 패킷 헤더 (size, pkt_type) <-> buf
+# 패킷 헤더 (size, pkt_type) <-> buf
 HEADER_FORMAT = "!HB"   # 빅 앤디언, 부호없는 2바이트Unsigned Short , 부호없는 1바이트Unsigned Char
 HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
 
