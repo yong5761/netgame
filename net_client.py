@@ -74,7 +74,11 @@ class NetClient:
  def send_tick(self, body): # UDP
   pass
  def pop_packet(self):# 수신 큐에서 패킷 가져오기
-  pass
+ # 가장 먼저 들어온 패킷 반환
+    try:
+     return net_state.recv_queue.get_nowait()
+    except queue.Empty:
+      return None
  def _recv_exact(self, size):# 헤더 받기
      data = bytearray()
      while len(data) < size:
