@@ -127,6 +127,47 @@ class NetClient:
   self.disconnect()
 
  def _udp_recv_loop(self):# UDP 수신 스레드용 함수
-  pass
+  while self.running:
+     try:
+         # UDP 데이터그램 수신
+         data, addr = self.udp_sock.recvfrom(65535)
+         if len(data) < packet.HEADER_SIZE:
+             continue
+         header = data[:packet.HEADER_SIZE]
+         body = data[packet.HEADER_SIZE:]
+         size, pkt_type = packet.unpack_header(header)
+         # 본문 크기 검사
+         if len(body) != size or pkt_type != packet.PKT_TICK_C2S:
+             continue
+         # UDP 순번 검사 (2바이트, 빅 엔디안)
+         seq = struct.unpack("!H", body[:2])[0]
+         if seq <= net_state.last_recv_seq:
+             continue
+         net_state.last_recv_seq = seq
+         # 수신 큐에 저장
+         net_state.recv_queue.put((pkt_type, body))
+
+     except socket.timeout:
+         continue
+
+     except OSError as e:
+         if self.running:
+             print(f"UDP 수신 오류: {e}")
+         break
  def _send_loop(self):# 발신
-  pass
+  while self.running:
+     try:
+         # 송신 큐에서 데이터 가져오기
+         pkt_type, body = net_state.send_queue.get(timeout=0.1)
+         # TCP 전송
+         if pkt_type >= packet.PKT_JOIN or pkt_type <= packet.PKT_LEAVE:
+            self.send_packet(pkt_type, body)
+         # UDP 전송
+         elif pkt_type == packet.PKT_TICK_C2S:
+            self.send_tick(body)
+         else:
+             print(f"잘못된 패킷 타입 번호: {pkt_type}")
+     except queue.Empty:
+         continue
+     except Exception as e:
+         print(f"송신 스레드 오류: {e}")
