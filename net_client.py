@@ -26,9 +26,19 @@ class NetClient:
         net_state.server_port = port
         # TCP 소켓 생성 및 연결
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_sock.connect((ip, port))
+        self.tcp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # TIME-WAIT상태에서 즉시 연결 가능
+        self.tcp_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # Nagle알고리즘 비활성화
+        self.tcp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1) # 연결 상태 확인
+        self.tcp_sock.settimeout(5.0)
+        try:
+         self.tcp_sock.connect((ip, port))
+        except socket.timeout:
+         print("서버 연결 시간 초과");
+        self.tcp_sock.settimeout(None)
+
         # UDP 소켓 생성 및 수신용 포트 할당
         self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.udp_sock.bind(("", 0))
 
         self.running = True
