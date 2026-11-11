@@ -18,4 +18,3 @@ def report_hit(victim, attacker, dmg, guarding):
     net_state.send_queue.put((packet.PKT_HIT_REPORT, body))
 
     return True
-    
