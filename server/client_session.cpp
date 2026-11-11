@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include "session_manager.h"
+#include "packet.h"
 #include <cstdint>
 
 ClientSession::ClientSession(SOCKET sock, sockaddr_in addr, int playerNum, SessionManager* mgr)
@@ -66,8 +67,22 @@ void ClientSession::RecvLoop() {
             int pktTotal = 3 + static_cast<int>(bodySize);
             if (accumLen < pktTotal) break;                       // 3. 본문 미만
 
-            printf("[Session %d] pkt type=%u body=%u bytes\n",
-                   m_playerNum, pktType, bodySize);               // 4. 처리 (출력)
+            if (pktType == static_cast<uint8_t>(PKT_SELECT)) {    // 4. 종류별 처리
+                if (bodySize >= 1) {
+                    uint8_t charNum = static_cast<uint8_t>(accumBuf[3]);
+                    if (charNum > 2) {
+                        printf("[Session %d] PKT_SELECT charNum=%u 범위 초과, 무시\n",
+                               m_playerNum, charNum);
+                    } else {
+                        m_charNum = static_cast<int>(charNum);
+                        printf("[Session %d] PKT_SELECT charNum=%u\n", m_playerNum, charNum);
+                        m_mgr->OnCharSelected(m_playerNum, charNum);
+                    }
+                }
+            } else {
+                printf("[Session %d] pkt type=%u body=%u bytes\n",
+                       m_playerNum, pktType, bodySize);
+            }
 
             memmove(accumBuf, accumBuf + pktTotal, accumLen - pktTotal);
             accumLen -= pktTotal;                                  // 5. 버퍼 앞부분 제거
