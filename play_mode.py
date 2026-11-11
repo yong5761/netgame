@@ -11,8 +11,9 @@ from interaction import HitBoxManager
 
 import packet
 import net_state
+import net_client
 
-TICK_INTERVAL = 0.05
+TICK_INTERVAL = 0.05# 1/frame
 tick_timer = 0.0
 
 pressed_keys = set()# 현재 누르고 있는 키
@@ -52,7 +53,7 @@ def handle_events():
     for event in event_list:
         if event.type == SDL_QUIT:
             game_framework.quit()
-        elif event.type == SDL_KEYDOWN
+        elif event.type == SDL_KEYDOWN:
             if event.key == SDLK_ESCAPE:
                 running = False
             elif  event.key == SDLK_r:
@@ -131,8 +132,18 @@ def init():
         game_world.add_object(c)
 
 def update():
-    global round_over, round_over_timer,round_reset_timer
+    global round_over, round_over_timer,round_reset_timer, tick_timer
+
+    # 기존 게임 업데이트
     game_world.update()
+
+    # 네트워크 입력 전송
+    if net_state.is_connected:
+        tick_timer += game_framework.frame_time
+
+        while tick_timer >= TICK_INTERVAL:
+            tick_timer -= TICK_INTERVAL
+            send_tick_packet()
 
     common.c1, common.c2 = common.characters
     if common.game_mode == 'Single Player':
@@ -189,7 +200,7 @@ def finish():
 
 # ----------------------------------------------------------------
 def get_key_mask():
-    keys = 0
+    keys = 0x00
     for key in pressed_keys:
         keys |= packet.KEY_TO_MASK.get(key, 0)
     return keys
@@ -200,14 +211,10 @@ def send_tick_packet():
 
     my_character = common.characters[net_state.my_player_num]
 
-    keys = get_key_mask()
-
-    common.net_client.send_tick(
-        keys,
-        int(my_character.xPos),
-        int(my_character.yPos),
-        my_character.face_dir,
-        my_character.state,
-        my_character.frame,
-        0
-    )
+    body = packet.pack_tick_c2s(get_key_mask(),
+                                int(my_character.xPos),
+                                int(my_character.yPos),
+                                my_character.face_dir,
+                                my_character.get_state_id(),
+                                my_character.frame, 0)
+    net_client.NetClient.send_tick(body)

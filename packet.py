@@ -1,3 +1,4 @@
+from pico2d import *
 import struct
 
 # ---------------패킷 종류 상수 대응표---------------
@@ -45,14 +46,24 @@ KEY_DOWN    = 0x08
 KEY_LK      = 0x80
 #
 KEY_TO_MASK = {
+# P1
     SDLK_a: KEY_LEFT,
     SDLK_d: KEY_RIGHT,
     SDLK_w: KEY_UP,
     SDLK_s: KEY_DOWN,
-    SDLK_j: KEY_LP,
-    SDLK_k: KEY_RP,
-    SDLK_u: KEY_RK,
-    SDLK_i: KEY_LK,
+    SDLK_f: KEY_LP,
+    SDLK_g: KEY_RP,
+    SDLK_b: KEY_RK,
+    SDLK_c: KEY_LK,
+# P2
+    SDLK_LEFT: KEY_LEFT,    
+    SDLK_RIGHT: KEY_RIGHT,
+    SDLK_UP: KEY_UP,
+    SDLK_DOWN: KEY_DOWN,
+    SDLK_KP_4: KEY_LP,
+    SDLK_KP_5: KEY_RP,
+    SDLK_KP_2: KEY_RK,
+    SDLK_KP_1: KEY_LK
 }
 # 상태 플래그 비트
 FLAG_ATTACKING  =0x01   # 공격 중
