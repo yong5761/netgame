@@ -123,7 +123,7 @@ class HitBoxManager:
         if not target.get_damage:
             return False
 
-        if not self.collision_check(attacker.attack_hitbox, target.bocy_hitbox):
+        if not self.collision_check(attacker.attack_hitbox, target.body_hitbox):
             return False
 
         queued = round_sync.report_hit(victim_num, attacker_num, attacker.atk, target.is_guarding)
