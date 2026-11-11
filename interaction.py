@@ -97,6 +97,15 @@ class HitBoxManager:
         target.xPos += (40 * attacker.face_dir)  # 넉백 효과
         target.state_machine.handle_state_event(('HITTED', None))
 
+    def detect_online_hit(self, characters, my_player_num):
+        # 플레이어 번호를 받기 전에는 검사하지 않음
+        if my_player_num not in (0, 1):
+            return False
+
+        if len(characters) != 2:
+            return False
+
+
     def detect_attack_hits(self):
         body_boxes = [hb for hb in self.hitboxes if hb.hb_kind == 'body']
         body_box_1, body_box_2 = body_boxes[0], body_boxes[1]
