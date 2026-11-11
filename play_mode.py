@@ -9,6 +9,15 @@ from ai_controller import AIController
 from character_frame import *
 from interaction import HitBoxManager
 
+import packet
+import net_state
+import net_client
+
+TICK_INTERVAL = 0.05# 1/frame
+tick_timer = 0.0
+
+pressed_keys = set()# 현재 누르고 있는 키
+
 running = True
 debug_hitbox = False
 round_over = False
@@ -40,28 +49,39 @@ def reset_round():
     pass
 def handle_events():
     event_list = get_events()
-    global running
+    global running, pressed_keys
     for event in event_list:
         if event.type == SDL_QUIT:
             game_framework.quit()
-        elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
-            running = False
-        elif event.type==SDL_KEYDOWN and event.key==SDLK_r:
-            game_framework.change_mode(intro_mode)
-        elif event.type==SDL_KEYDOWN and event.key == SDLK_F1: #히트박스 그리기
-            global debug_hitbox
-            debug_hitbox = not debug_hitbox
-        elif event.type==SDL_KEYDOWN and event.key == SDLK_F2: #플레이어 공격력 최대치로 조절
-            common.c1.atk = 100
-            common.c2.atk = 100
-            pass
-        elif event.type==SDL_KEYDOWN and event.key==SDLK_F4: #타이머 종료
-            common.game_timer.total_time = 117.0
-        else:
-            for c in common.characters:
-                c.handle_event(event)
-    pass
-
+        elif event.type == SDL_KEYDOWN:
+            if event.key == SDLK_ESCAPE:
+                running = False
+            elif  event.key == SDLK_r:
+                game_framework.change_mode(intro_mode)
+            elif event.key == SDLK_F1: #히트박스 그리기
+                global debug_hitbox
+                debug_hitbox = not debug_hitbox
+            elif event.key == SDLK_F2: #플레이어 공격력 최대치로 조절
+                common.c1.atk = 100
+                common.c2.atk = 100
+                pass
+            elif event.key == SDLK_F4: #타이머 종료
+                common.game_timer.total_time = 117.0
+            else:
+                # 키 입력 상태 저장
+                pressed_keys.add(event.key)
+                # 멀티인 경우
+                if net_state.is_connected:
+                    # 내 캐릭터에만 이벤트 전달
+                    my_character = common.characters[net_state.my_player_num]
+                    my_character.handle_event(event)
+                else:
+                # 기존 오프라인 모드
+                    for c in common.characters:
+                        c.handle_event(event)
+        elif event.type == SDL_KEYUP:
+            pressed_keys.discard(event.key)
+# 초기 설정
 def init():
     common.palace_map = PalaceMap()
     common.game_timer = Timer()
@@ -112,8 +132,18 @@ def init():
         game_world.add_object(c)
 
 def update():
-    global round_over, round_over_timer,round_reset_timer
+    global round_over, round_over_timer,round_reset_timer, tick_timer
+
+    # 기존 게임 업데이트
     game_world.update()
+
+    # 네트워크 입력 전송
+    if net_state.is_connected:
+        tick_timer += game_framework.frame_time
+
+        while tick_timer >= TICK_INTERVAL:
+            tick_timer -= TICK_INTERVAL
+            send_tick_packet()
 
     common.c1, common.c2 = common.characters
     if common.game_mode == 'Single Player':
@@ -168,3 +198,23 @@ def finish():
     pass
 
 
+# ----------------------------------------------------------------
+def get_key_mask():
+    keys = 0x00
+    for key in pressed_keys:
+        keys |= packet.KEY_TO_MASK.get(key, 0)
+    return keys
+
+def send_tick_packet():
+    if not net_state.is_connected:
+        return
+
+    my_character = common.characters[net_state.my_player_num]
+
+    body = packet.pack_tick_c2s(get_key_mask(),
+                                int(my_character.xPos),
+                                int(my_character.yPos),
+                                my_character.face_dir,
+                                my_character.get_state_id(),
+                                my_character.frame, 0)
+    net_client.NetClient.send_tick(body)
