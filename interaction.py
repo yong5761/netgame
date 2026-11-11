@@ -120,7 +120,11 @@ class HitBoxManager:
         if not self.collision_check(attacker.attack_hitbox, target.bocy_hitbox):
             return False
 
+        queued = round_sync.report_hit(victim_num, attacker_num, attacker.atk, target.is_guarding)
+        if queued:
+            self.hit_reported = True
 
+        return queued
 
     def detect_attack_hits(self):
         body_boxes = [hb for hb in self.hitboxes if hb.hb_kind == 'body']
