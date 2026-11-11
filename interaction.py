@@ -1,5 +1,5 @@
 from pico2d import draw_rectangle
-
+import round_sync
 
 class HitBox:
     def __init__(self, owner, hb_kind:str, rect:tuple[float, float, float, float]):
@@ -14,6 +14,7 @@ class HitBox:
 class HitBoxManager:
     def __init__(self):
         self.hitboxes = []
+        self.hit_reported = False
 
     def register_hitbox(self, hitbox: HitBox):
         self.hitboxes.append(hitbox)
