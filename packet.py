@@ -65,8 +65,34 @@ def unpack_header(buf):
     size, pkt_type = struct.unpack(HEADER_FORMAT,buf[:HEADER_SIZE])
     return size, pkt_type
 
+TICK_C2S_FORMAT = "!HBBIBBBB"
+TICK_C2S_SIZE = struct.calcsize(TICK_C2S_FORMAT)
+
 def pack_tick_c2s(seq, keys, x, y, face, state, frame, flag):
-    pass
+    return struct.pack(TICK_C2S_FORMAT, seq, keys, x, y, face, state, frame, flag)
+
+TICK_S2C_FORMAT = "!H4hBBBB4hBBH"
+TICK_S2C_SIZE = struct.calcsize(TICK_S2C_FORMAT)
 
 def unpack_tick_s2c(body):
-    pass
+    if len(body) != TICK_S2C_SIZE:
+        raise ValueError("잘못된 TICK_S2C 패킷 크기")
+    data = struct.unpack(TICK_S2C_FORMAT, body)
+    return {
+        "seq": data[0],
+        "p1": {
+            "x": data[1],
+            "y": data[2],
+            "face": data[3],
+            "state": data[4],
+        },
+        "p2": {
+            "x": data[5],
+            "y": data[6],
+            "face": data[7],
+            "state": data[8],
+        },
+        "p1_hp": data[9],
+        "p2_hp": data[10],
+        "remaining_time": data[11]
+    }
