@@ -43,7 +43,17 @@ KEY_UP      = 0x04
 KEY_RK      = 0x40
 KEY_DOWN    = 0x08
 KEY_LK      = 0x80
-
+#
+KEY_TO_MASK = {
+    SDLK_a: KEY_LEFT,
+    SDLK_d: KEY_RIGHT,
+    SDLK_w: KEY_UP,
+    SDLK_s: KEY_DOWN,
+    SDLK_j: KEY_LP,
+    SDLK_k: KEY_RP,
+    SDLK_u: KEY_RK,
+    SDLK_i: KEY_LK,
+}
 # 상태 플래그 비트
 FLAG_ATTACKING  =0x01   # 공격 중
 FLAG_GUARDING   =0x02   # 가드 중
