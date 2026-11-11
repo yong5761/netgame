@@ -16,6 +16,7 @@ public:
     int    GetPlayerNum() const  { return m_playerNum; }
     SOCKET GetSock()      const  { return m_sock; }
     bool   IsAlive()      const  { return m_alive; }
+    int    GetCharNum()   const  { return m_charNum; }
 
     static DWORD WINAPI RecvThreadProc(LPVOID param);
 
@@ -24,5 +25,6 @@ private:
     sockaddr_in     m_addr;
     int             m_playerNum;
     bool            m_alive;
+    int             m_charNum;
     SessionManager* m_mgr;
 };

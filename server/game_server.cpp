@@ -113,6 +113,7 @@ void GameServer::AcceptLoop()
         }
         session->SetPlayerNum(slot);
         printf("[AcceptLoop] Player %d 접속\n", slot);
+        m_sessionMgr.SendAssign(slot);
 
         HANDLE hRecv = CreateThread(nullptr, 0, ClientSession::RecvThreadProc, session, 0, nullptr);
         if (!hRecv) {
