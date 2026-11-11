@@ -111,6 +111,14 @@ class HitBoxManager:
         target = characters[victim_num]
         attacker = characters[attacker_num]
 
+        if self.hit_reported:
+            return False
+
+        if not target.get_damage:
+            return False
+
+        if not self.collision_check(attacker.attack_hitbox, target.bocy_hitbox):
+            return False
 
 
 
