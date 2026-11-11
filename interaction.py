@@ -105,6 +105,14 @@ class HitBoxManager:
         if len(characters) != 2:
             return False
 
+        victim_num = my_player_num
+        attacker_num = 1 - my_player_num
+
+        target = characters[victim_num]
+        attacker = characters[attacker_num]
+
+
+
 
     def detect_attack_hits(self):
         body_boxes = [hb for hb in self.hitboxes if hb.hb_kind == 'body']
