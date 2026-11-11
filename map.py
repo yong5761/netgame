@@ -1,4 +1,3 @@
-from matplotlib.pyplot import margins
 from pico2d import load_image, get_canvas_width, get_canvas_height, clamp
 import common
 import game_framework
