@@ -111,6 +111,12 @@ class HitBoxManager:
         target = characters[victim_num]
         attacker = characters[attacker_num]
 
+        # 공격 박스가 사라지면 다음 공격을 보고할 수 있게 초기화
+        _, _, width, height = attacker.attack_hitbox.rect
+        if width == 0 or height == 0:
+            self.hit_reported = False
+            return False
+
         if self.hit_reported:
             return False
 
