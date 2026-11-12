@@ -22,14 +22,11 @@ p2_selected = False
 p_move_step = 175
 min_x = 210
 max_x = 580
-net_assign_received = False
-
 def init():
-    global image, p1_image, p2_image, p1_x, p1_y, p2_x, p2_y, net_assign_received
+    global image, p1_image, p2_image, p1_x, p1_y, p2_x, p2_y
     image = load_image('GameMode_Image/Game_Character_Select.png')
     p1_image = load_image('GameMode_Image/Game_Character_Select_Player.png')
     p1_x, p1_y = 228, 242
-    net_assign_received = False
     if common.game_mode=='Two Player':
         p2_image = load_image('GameMode_Image/Game_Character_Select_Player.png')
         p2_x, p2_y = 575, 242
@@ -62,7 +59,7 @@ def handle_events():
             elif event.key == common.KEYMAP_P1['lk']:
                 p1_rect[0] = 35
                 p1_selected = True
-                if common.game_mode == 'Network' and net_assign_received:
+                if common.game_mode == 'Network':
                     if p1_x == 228:
                         charNum = 0
                     elif p1_x == 403:
@@ -118,17 +115,17 @@ def draw():
     pass
 
 def update():
-    global net_assign_received
     if common.game_mode == 'Network' and common.net_client_obj:
-        raw = common.net_client_obj.pop_packet()
-        if raw and not isinstance(raw, tuple):
-            if len(raw) >= 1 and not net_assign_received:
-                net_state.my_player_num = raw[0]
-                net_assign_received = True
-            elif len(raw) >= 2 and net_assign_received:
-                common.p1_character_num = raw[0]
-                common.p2_character_num = raw[1]
-                game_framework.change_mode(play_mode)
+        pkt = common.net_client_obj.pop_packet()
+        if pkt is None:
+            return
+        pkt_type, body = pkt
+        if pkt_type == packet.PKT_ASSIGN and len(body) >= 1:
+            net_state.my_player_num = body[0]
+        elif pkt_type == packet.PKT_MATCH_START and len(body) >= 2:
+            common.p1_character_num = body[0]
+            common.p2_character_num = body[1]
+            game_framework.change_mode(play_mode)
 
 def pause():
     pass
