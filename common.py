@@ -16,6 +16,8 @@ game_mode = None
 hitbox_manager = None
 ai_player = None
 stage_num = 0
+net_client_obj = None
+server_ip = '127.0.0.1'
 KEYMAP_P1 ={
     'left' :SDLK_a,
     'right':SDLK_d,
