@@ -11,7 +11,6 @@ from interaction import HitBoxManager
 
 import packet
 import net_state
-from net_client import NetClient
 
 TICK_INTERVAL = 0.05# 1/frame
 tick_timer = 0.0
@@ -228,5 +227,5 @@ def send_tick_packet():
         int(my_character.frame),
         flag
     )
-    if NetClient.send_tick(body):
+    if net_state.network.send_tick(body):
         net_state.send_seq = (net_state.send_seq + 1) & 0xFFFF
