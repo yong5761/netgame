@@ -4,6 +4,8 @@ import play_mode
 from character import Character
 import common
 from character_frame import *
+import net_state
+import packet
 
 image = None
 p1_image = None
@@ -20,11 +22,14 @@ p2_selected = False
 p_move_step = 175
 min_x = 210
 max_x = 580
+net_assign_received = False
+
 def init():
-    global image, p1_image, p2_image, p1_x, p1_y, p2_x, p2_y
+    global image, p1_image, p2_image, p1_x, p1_y, p2_x, p2_y, net_assign_received
     image = load_image('GameMode_Image/Game_Character_Select.png')
     p1_image = load_image('GameMode_Image/Game_Character_Select_Player.png')
     p1_x, p1_y = 228, 242
+    net_assign_received = False
     if common.game_mode=='Two Player':
         p2_image = load_image('GameMode_Image/Game_Character_Select_Player.png')
         p2_x, p2_y = 575, 242
@@ -57,7 +62,14 @@ def handle_events():
             elif event.key == common.KEYMAP_P1['lk']:
                 p1_rect[0] = 35
                 p1_selected = True
-                pass
+                if common.game_mode == 'Network' and net_assign_received:
+                    if p1_x == 228:
+                        charNum = 0
+                    elif p1_x == 403:
+                        charNum = 1
+                    else:
+                        charNum = 2
+                    common.net_client_obj.send_packet(packet.PKT_SELECT, bytes([charNum]))
             elif event.key == common.KEYMAP_P2['lk']:
                 p2_rect[0] = 100
                 p2_selected = True
@@ -106,7 +118,12 @@ def draw():
     pass
 
 def update():
-    pass
+    global net_assign_received
+    if common.game_mode == 'Network' and common.net_client_obj:
+        raw = common.net_client_obj.pop_packet()
+        if raw and not isinstance(raw, tuple) and len(raw) >= 1 and not net_assign_received:
+            net_state.my_player_num = raw[0]
+            net_assign_received = True
 
 def pause():
     pass
