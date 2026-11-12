@@ -127,11 +127,11 @@ class NetClient:
          header = self._recv_exact(packet.HEADER_SIZE)
          if header is None:
              break
-         packet.unpack_header(header)
-         data = self.tcp_sock.recv(32)
-         if not data:
+         size, pkt_type = packet.unpack_header(header)
+         body = self._recv_exact(size) if size > 0 else b''
+         if size > 0 and body is None:
              break
-         net_state.recv_queue.put(data)
+         net_state.recv_queue.put((pkt_type, body))
      except OSError:
          break
   self.disconnect()
