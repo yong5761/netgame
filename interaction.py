@@ -76,30 +76,34 @@ class HitBoxManager:
                     overlap_x = min(box_1.rect[0] + box_1.rect[2], box_2.rect[0] + box_2.rect[2]) - max(box_1.rect[0], box_2.rect[0])
                     ch_1.xPos += overlap_x//2
                     ch_2.xPos -= overlap_x//2
+    def can_hit(self, attacker, target):
+        # 공격 박스와 상대 물체가 겹치지 않으면 피격 처리 X
+        if not self.collision_check(attacker.attack_hitbox, target.body_hitbox):
+            return False
+        # 상대가 가드 중이면 피해 X
+        if target.is_guarding:
+            return False
+        # 피해를 받을 수 없는 상태면 피해 X
+        if not target.get_damage:
+            return False
+        return True
+
+    def apply_local_hit(self, attacker, target):
+        target.is_hitted = True
+        attacker.is_succeeded_attack = True
+        target.hp -= attacker.atk
+        target.get_damage = False
+        target.xPos += (40 * attacker.face_dir)  # 넉백 효과
+        target.state_machine.handle_state_event(('HITTED', None))
 
     def detect_attack_hits(self):
         body_boxes = [hb for hb in self.hitboxes if hb.hb_kind == 'body']
         body_box_1, body_box_2 = body_boxes[0], body_boxes[1]
 
-        def handle(ch_1, ch_2):
-            target = ch_2
-            attacker = ch_1
-            if not self.collision_check(ch_1.attack_hitbox,ch_2.body_hitbox):
-                return
-
-            if target.is_guarding == True:
-                return
-
-            if target.get_damage == False:
-                return
-
-            target.is_hitted = True
-            attacker.is_succeeded_attack = True
-            target.hp -= attacker.atk
-            target.get_damage = False
-            target.xPos += (40 * attacker.face_dir)  # 넉백 효과
-            target.state_machine.handle_state_event(('HITTED', None))
-
+        def handle(attacker, target):
+            if self.can_hit(attacker, target):
+                self.apply_local_hit(attacker, target)
+                
         handle(body_box_1.owner, body_box_2.owner)
         handle(body_box_2.owner, body_box_1.owner)
 

@@ -6,6 +6,7 @@ from state_machine import *
 from character_frame import *
 from character_frame import CHARACTER_WIDTH_SCALE, CHARACTER_HEIGHT_SCALE
 import common
+import packet
 
 common.hitbox_manager = HitBoxManager()
 
@@ -1109,3 +1110,25 @@ class Character:
             hitbox.update((sx - w, self.yPos - h, CHARACTER_WIDTH_SCALE * w - offset_width, CHARACTER_HEIGHT_SCALE*h))
         else:
             hitbox.update((sx - w + offset_width, self.yPos - h, CHARACTER_WIDTH_SCALE * w - offset_width, CHARACTER_HEIGHT_SCALE*h))
+
+    def get_state_id(self):
+        state_map = {
+            self.IDLE: packet.STATE_IDLE,
+            self.WALK: packet.STATE_WALK,
+            self.JUMP: packet.STATE_JUMP,
+            self.MOVE_JUMP: packet.STATE_RUN,
+            self.RUN: packet.STATE_RUN,
+            self.RUN_JUMP: packet.STATE_RUN_JUMP,
+            self.BACK_DASH: packet.STATE_BACK_DASH,
+            self.SIT_DOWN: packet.STATE_SIT_DOWN,
+            self.SIT_UP: packet.STATE_SIT_UP,
+            self.NORMAL_ATTACK: packet.STATE_NORMAL_ATTACK,
+            self.AIR_ATTACK: packet.STATE_AIR_ATTACK,
+            self.SIT_ATTACK: packet.STATE_SIT_ATTACK,
+            self.GUARD: packet.STATE_GUARD,
+            self.GET_HIT: packet.STATE_GET_HIT,
+            self.COMBO_ATTACK: packet.STATE_COMBO_ATTACK,
+            self.DEAD: packet.STATE_DEAD
+        }
+        current_state = self.state_machine.cur_state
+        return state_map.get(current_state, 0)
