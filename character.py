@@ -6,7 +6,7 @@ from state_machine import *
 from character_frame import *
 from character_frame import CHARACTER_WIDTH_SCALE, CHARACTER_HEIGHT_SCALE
 import common
-from packet import FLAG_ATTACKING, FLAG_GUARDING, FLAG_HITTED, FLAG_DAMAGEABLE
+import packet
 
 common.hitbox_manager = HitBoxManager()
 
@@ -1137,15 +1137,15 @@ class Character:
         flag = 0
 
         if self.is_attacking:
-            flag |= FLAG_ATTACKING
+            flag |= packet.FLAG_ATTACKING
 
         if self.is_guarding:
-            flag |= FLAG_GUARDING
+            flag |= packet.FLAG_GUARDING
 
         if self.is_hitted:
-            flag |= FLAG_HITTED
+            flag |= packet.FLAG_HITTED
 
         if self.is_opponent_attacking:
-            flag |= FLAG_DAMAGEABLE
+            flag |= packet.FLAG_DAMAGEABLE
 
         return flag

@@ -75,8 +75,8 @@ class NetClient:
              except OSError:
                  pass
 
-     self.tcp_sock = None
-     self.udp_sock = None
+     self.tcp_socket = None
+     self.udp_socket = None
 
  def send_packet(self, pkt_type, body): # TCP
   if not net_state.is_connected or self.tcp_sock is None:

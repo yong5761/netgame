@@ -86,15 +86,8 @@ def unpack_header(buf):
     size, pkt_type = struct.unpack(HEADER_FORMAT,buf[:HEADER_SIZE])
     return size, pkt_type
 
-TICK_C2S_FORMAT = "!HBBIBBBB"
-TICK_C2S_SIZE = struct.calcsize(TICK_C2S_FORMAT)
-
-def pack_tick_c2s(seq, keys, x, y, face, state, frame, flag):
-    return struct.pack(TICK_C2S_FORMAT, seq, keys, x, y, face, state, frame, flag)
 
 
-TICK_S2C_FORMAT = "!H4hBBBB4hBBH"
-TICK_S2C_SIZE = struct.calcsize(TICK_S2C_FORMAT)
 
 def unpack_tick_s2c(body):
     if len(body) != TICK_S2C_SIZE:
@@ -155,7 +148,6 @@ ROUND_END_SIZE = struct.calcsize(ROUND_END_FORMAT)
 # 8. TickC2SBody
 TICK_C2S_FORMAT = "!HBBhhbBBB"
 TICK_C2S_SIZE = struct.calcsize(TICK_C2S_FORMAT)
-
 # 9. PlayerState
 PLAYER_STATE_FORMAT = "!hhbBBB"
 PLAYER_STATE_SIZE = struct.calcsize(PLAYER_STATE_FORMAT)
@@ -217,10 +209,17 @@ def pack_round_end(winner, win_count, match_over):
     )
 # TickC2SBody
 def pack_tick_c2s(seq, player, keys, x, y, face, state, frame, flag):
-    return struct.pack(
-        TICK_C2S_FORMAT,
-        seq, player, keys, x, y, face, state, frame, flag
-    )
+    print("2seq:", seq)
+    print("1keys:", keys)
+    print("1player:", player)
+    print("2x:", x)
+    print("2y:", y)
+    print("1face:", face)
+    print("1state:", state)
+    print("1frame:", frame)
+    print("1flag:", flag)
+    return struct.pack(TICK_C2S_FORMAT, seq, player, keys, x, y, face, state, frame, flag)
+
 # PlayerState
 def pack_player_state(x, y, face, state, frame, flag):
     return struct.pack(

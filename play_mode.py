@@ -11,7 +11,7 @@ from interaction import HitBoxManager
 
 import packet
 import net_state
-import net_client
+from net_client import NetClient
 
 TICK_INTERVAL = 0.05# 1/frame
 tick_timer = 0.0
@@ -97,8 +97,8 @@ def init():
     elif common.p1_character_num == 2:
         common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
 
-    # p2의 캐릭터 생성
-    if common.game_mode == 'Two Player':
+    # p2의 캐릭터 생성/멀티용 캐릭터 생성
+    if common.game_mode == 'Two Player' or net_state.is_connected:
         if common.p2_character_num == 0:
             common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
         elif common.p2_character_num == 1:
@@ -211,7 +211,11 @@ def send_tick_packet():
 
     my_character = common.characters[net_state.my_player_num]
     keys = get_key_mask()
-    flag = Character.get_flag()
+    # my_player_num
+    if net_state.my_player_num == 0:
+        flag = common.c1.get_flag()
+    else:
+        flag = common.c2.get_flag()
     seq = net_state.send_seq
     body = packet.pack_tick_c2s(
         seq,
@@ -221,8 +225,8 @@ def send_tick_packet():
         int(my_character.yPos),
         my_character.face_dir,
         my_character.get_state_id(),
-        my_character.frame,
+        int(my_character.frame),
         flag
     )
-    if net_client.NetClient.send_tick(body):
+    if NetClient.send_tick(body):
         net_state.send_seq = (net_state.send_seq + 1) & 0xFFFF
