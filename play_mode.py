@@ -210,11 +210,19 @@ def send_tick_packet():
         return
 
     my_character = common.characters[net_state.my_player_num]
-
-    body = packet.pack_tick_c2s(get_key_mask(),
-                                int(my_character.xPos),
-                                int(my_character.yPos),
-                                my_character.face_dir,
-                                my_character.get_state_id(),
-                                my_character.frame, 0)
-    net_client.NetClient.send_tick(body)
+    keys = get_key_mask()
+    flag = Character.get_flag()
+    seq = net_state.send_seq
+    body = packet.pack_tick_c2s(
+        seq,
+        net_state.my_player_num,
+        keys,
+        int(my_character.xPos),
+        int(my_character.yPos),
+        my_character.face_dir,
+        my_character.get_state_id(),
+        my_character.frame,
+        flag
+    )
+    if net_client.NetClient.send_tick(body):
+        net_state.send_seq = (net_state.send_seq + 1) & 0xFFFF
