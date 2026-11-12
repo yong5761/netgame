@@ -125,6 +125,18 @@ def update():
         elif pkt_type == packet.PKT_MATCH_START and len(body) >= 2:
             common.p1_character_num = body[0]
             common.p2_character_num = body[1]
+            if common.p1_character_num == 0:
+                common.c1 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+            elif common.p1_character_num == 1:
+                common.c1 = Character(KimFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+            elif common.p1_character_num == 2:
+                common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+            if common.p2_character_num == 0:
+                common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+            elif common.p2_character_num == 1:
+                common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+            elif common.p2_character_num == 2:
+                common.c2 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
             game_framework.change_mode(play_mode)
 
 def pause():
