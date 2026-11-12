@@ -92,6 +92,7 @@ TICK_C2S_SIZE = struct.calcsize(TICK_C2S_FORMAT)
 def pack_tick_c2s(seq, keys, x, y, face, state, frame, flag):
     return struct.pack(TICK_C2S_FORMAT, seq, keys, x, y, face, state, frame, flag)
 
+
 TICK_S2C_FORMAT = "!H4hBBBB4hBBH"
 TICK_S2C_SIZE = struct.calcsize(TICK_S2C_FORMAT)
 
@@ -117,3 +118,122 @@ def unpack_tick_s2c(body):
         "p2_hp": data[10],
         "remaining_time": data[11]
     }
+
+
+# =========================================================
+# 본문 구조체 포맷 (C++ packet.h와 1:1 대응)
+# =========================================================
+
+# 1. AssignBody
+ASSIGN_FORMAT = "!B"
+ASSIGN_SIZE = struct.calcsize(ASSIGN_FORMAT)
+
+# 2. SelectBody
+SELECT_FORMAT = "!B"
+SELECT_SIZE = struct.calcsize(SELECT_FORMAT)
+
+# 3. MatchStartBody
+MATCH_START_FORMAT = "!2B"
+MATCH_START_SIZE = struct.calcsize(MATCH_START_FORMAT)
+
+# 4. RoundStartBody
+ROUND_START_FORMAT = "!2h3B"
+ROUND_START_SIZE = struct.calcsize(ROUND_START_FORMAT)
+
+# 5. HitReportBody
+HIT_REPORT_FORMAT = "!4B"
+HIT_REPORT_SIZE = struct.calcsize(HIT_REPORT_FORMAT)
+
+# 6. HitResultBody
+HIT_RESULT_FORMAT = "!4Bh"
+HIT_RESULT_SIZE = struct.calcsize(HIT_RESULT_FORMAT)
+
+# 7. RoundEndBody
+ROUND_END_FORMAT = "!4B"
+ROUND_END_SIZE = struct.calcsize(ROUND_END_FORMAT)
+
+# 8. TickC2SBody
+TICK_C2S_FORMAT = "!HBBhhbBBB"
+TICK_C2S_SIZE = struct.calcsize(TICK_C2S_FORMAT)
+
+# 9. PlayerState
+PLAYER_STATE_FORMAT = "!hhbBBB"
+PLAYER_STATE_SIZE = struct.calcsize(PLAYER_STATE_FORMAT)
+
+# 10. TickS2CBody
+TICK_S2C_FORMAT = "!" + "H" + PLAYER_STATE_FORMAT[1:] * 2 + "BBH"
+TICK_S2C_SIZE = struct.calcsize(TICK_S2C_FORMAT)
+
+
+# =========================================================
+# 구조체 크기 검증
+# =========================================================
+
+assert ASSIGN_SIZE == 1
+assert SELECT_SIZE == 1
+assert MATCH_START_SIZE == 2
+assert ROUND_START_SIZE == 7
+assert HIT_REPORT_SIZE == 4
+assert HIT_RESULT_SIZE == 6
+assert ROUND_END_SIZE == 4
+assert TICK_C2S_SIZE == 12
+assert PLAYER_STATE_SIZE == 8
+assert TICK_S2C_SIZE == 22
+
+# AssignBody
+def pack_assign(player):
+    return struct.pack(ASSIGN_FORMAT, player)
+# SelectBody
+def pack_select(char_num):
+    return struct.pack(SELECT_FORMAT, char_num)
+# MatchStartBody
+def pack_match_start(char_num):
+    return struct.pack(MATCH_START_FORMAT, *char_num)
+# RoundStartBody
+def pack_round_start(start_x, hp, round_num):
+    return struct.pack(
+        ROUND_START_FORMAT,
+        start_x[0], start_x[1],
+        hp[0], hp[1],
+        round_num
+    )
+# HitReportBody
+def pack_hit_report(victim, attacker, damage, guard):
+    return struct.pack(
+        HIT_REPORT_FORMAT,
+        victim, attacker, damage, guard
+    )
+# HitResultBody
+def pack_hit_result(victim, attacker, damage, hp, knock_x):
+    return struct.pack(
+        HIT_RESULT_FORMAT,
+        victim, attacker, damage, hp, knock_x
+    )
+# RoundEndBody
+def pack_round_end(winner, win_count, match_over):
+    return struct.pack(
+        ROUND_END_FORMAT,
+        winner, win_count[0], win_count[1], match_over
+    )
+# TickC2SBody
+def pack_tick_c2s(seq, player, keys, x, y, face, state, frame, flag):
+    return struct.pack(
+        TICK_C2S_FORMAT,
+        seq, player, keys, x, y, face, state, frame, flag
+    )
+# PlayerState
+def pack_player_state(x, y, face, state, frame, flag):
+    return struct.pack(
+        PLAYER_STATE_FORMAT,
+        x, y, face, state, frame, flag
+    )
+# TickS2CBody
+def pack_tick_s2c(seq, p1, p2, hp, time_left):
+    return struct.pack(
+        TICK_S2C_FORMAT,
+        seq,
+        *p1,
+        *p2,
+        hp[0], hp[1],
+        time_left
+    )
