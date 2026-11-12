@@ -121,9 +121,14 @@ def update():
     global net_assign_received
     if common.game_mode == 'Network' and common.net_client_obj:
         raw = common.net_client_obj.pop_packet()
-        if raw and not isinstance(raw, tuple) and len(raw) >= 1 and not net_assign_received:
-            net_state.my_player_num = raw[0]
-            net_assign_received = True
+        if raw and not isinstance(raw, tuple):
+            if len(raw) >= 1 and not net_assign_received:
+                net_state.my_player_num = raw[0]
+                net_assign_received = True
+            elif len(raw) >= 2 and net_assign_received:
+                common.p1_character_num = raw[0]
+                common.p2_character_num = raw[1]
+                game_framework.change_mode(play_mode)
 
 def pause():
     pass
