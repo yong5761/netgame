@@ -1,5 +1,6 @@
 #include "hit_judge.h"
 #include <cstdio>
+#include <stdlib.h>
 
 void HitJudge::HandleReport(int attackerNum, int defenderNum) {
     printf("[HitJudge] HandleReport 호출\n");
@@ -51,7 +52,7 @@ void HitJudge::CheckDistance() {
     const PlayerState& attacker = m_playerStates[m_report.attacker];
     const PlayerState& defender = m_playerState[m_report.victim];
 
-    int distance = std::abs(static_cast<int>(attacker.x)-static_cast<int>(defender.x))
+    int distance = abs(static_cast<int>(attacker.x)-static_cast<int>(defender.x))
 }
 
 void HitJudge::CheckCooldown() {
