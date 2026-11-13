@@ -61,7 +61,13 @@ void HitJudge::CheckCooldown() {
 
     int victim = m_report.victim;
 
-    
+    if (!m_hasLastHit[victim])
+        return;
+
+    DWORD elapsed = m_now - m_lastHitTick[victim];
+
+    if (elapsed < m_cooldownMs)
+        m_valid = false;
 }
 
 void HitJudge::SendResult(int defenderNum) {
