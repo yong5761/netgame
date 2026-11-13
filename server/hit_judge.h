@@ -17,6 +17,7 @@ private:
     DWORD m_lastHitTick[2];
     float m_minDist;
     DWORD m_cooldownMs;
+    bool m_hasLastHit[2]{};
 
     HitReportBody m_report{};
     PlayerState m_playerStates[2]{};
