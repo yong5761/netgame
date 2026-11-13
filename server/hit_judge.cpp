@@ -3,6 +3,12 @@
 
 void HitJudge::HandleReport(int attackerNum, int defenderNum) {
     printf("[HitJudge] HandleReport 호출\n");
+
+    m_valid = false;
+
+    if (!m_ready)
+        return;
+    m_ready = false;
 }
 
 void HitJudge::Verify() {
