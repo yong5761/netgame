@@ -13,6 +13,13 @@ void HitJudge::HandleReport(int attackerNum, int defenderNum) {
     if (m_report.attacker != attackerNum ||
         m_report.victim != defenderNum)
         return;
+
+    m_now = GetTickCount();
+
+    Verify();
+
+    if (!m_valid)
+        return;
 }
 
 void HitJudge::Verify() {
