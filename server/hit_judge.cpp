@@ -9,6 +9,10 @@ void HitJudge::HandleReport(int attackerNum, int defenderNum) {
     if (!m_ready)
         return;
     m_ready = false;
+
+    if (m_report.attacker != attackerNum ||
+        m_report.victim != defenderNum)
+        return;
 }
 
 void HitJudge::Verify() {
