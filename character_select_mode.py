@@ -4,6 +4,8 @@ import play_mode
 from character import Character
 import common
 from character_frame import *
+import net_state
+import packet
 
 image = None
 p1_image = None
@@ -57,7 +59,14 @@ def handle_events():
             elif event.key == common.KEYMAP_P1['lk']:
                 p1_rect[0] = 35
                 p1_selected = True
-                pass
+                if common.game_mode == 'Network':
+                    if p1_x == 228:
+                        charNum = 0
+                    elif p1_x == 403:
+                        charNum = 1
+                    else:
+                        charNum = 2
+                    common.net_client_obj.send_packet(packet.PKT_SELECT, bytes([charNum]))
             elif event.key == common.KEYMAP_P2['lk']:
                 p2_rect[0] = 100
                 p2_selected = True
@@ -106,7 +115,29 @@ def draw():
     pass
 
 def update():
-    pass
+    if common.game_mode == 'Network' and common.net_client_obj:
+        pkt = common.net_client_obj.pop_packet()
+        if pkt is None:
+            return
+        pkt_type, body = pkt
+        if pkt_type == packet.PKT_ASSIGN and len(body) >= 1:
+            net_state.my_player_num = body[0]
+        elif pkt_type == packet.PKT_MATCH_START and len(body) >= 2:
+            common.p1_character_num = body[0]
+            common.p2_character_num = body[1]
+            if common.p1_character_num == 0:
+                common.c1 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+            elif common.p1_character_num == 1:
+                common.c1 = Character(KimFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+            elif common.p1_character_num == 2:
+                common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+            if common.p2_character_num == 0:
+                common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+            elif common.p2_character_num == 1:
+                common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+            elif common.p2_character_num == 2:
+                common.c2 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+            game_framework.change_mode(play_mode)
 
 def pause():
     pass
