@@ -2,6 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <cstdint>
+#include "packet.h"
 
 class HitJudge {
 public:
@@ -16,4 +17,8 @@ private:
     DWORD m_lastHitTick[2];
     float m_minDist;
     DWORD m_cooldownMs;
+
+    HitReportBody m_report{};
+    PlayerState m_playerStates[2]{};
+    HitResultBody m_result{};
 };
