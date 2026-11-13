@@ -56,6 +56,12 @@ void HitJudge::CheckDistance() {
 
 void HitJudge::CheckCooldown() {
     printf("[HitJudge] CheckCooldown 호출\n");
+    if (!m_valid)
+        return;
+
+    int victim = m_report.victim;
+
+    
 }
 
 void HitJudge::SendResult(int defenderNum) {
