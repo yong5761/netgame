@@ -37,9 +37,9 @@ class NetClient:
         self.tcp_sock.settimeout(None)
 
         # UDP 소켓 생성 및 수신용 포트 할당
-        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.udp_sock.bind(("", 0))
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.udp_socket.bind(("", 0))
 
         self.running = True
         net_state.is_connected = True
@@ -63,7 +63,7 @@ class NetClient:
      self.running = False
      net_state.is_connected = False
 
-     for sock in (self.tcp_sock, self.udp_sock):# 소켓 닫기
+     for sock in (self.tcp_socket, self.udp_socket):# 소켓 닫기
          if sock:
              try:
                  sock.shutdown(socket.SHUT_RDWR)
@@ -93,14 +93,14 @@ class NetClient:
    return False
 
  def send_tick(self, body): # UDP
-  if not net_state.is_connected or self.udp_sock is None:
+  if not net_state.is_connected or self.udp_socket is None:
    return False
   try:
    # 틱 패킷 헤더 생성
    header = packet.pack_header(len(body), packet.PKT_TICK_C2S)
    send_data = header + body
 
-   self.udp_sock.sendto(send_data, (net_state.server_ip, net_state.server_port))# UDP 전송
+   self.udp_socket.sendto(send_data, (net_state.server_ip, net_state.server_port))# UDP 전송
    return True
   except OSError as e:
      print(f"UDP 전송 오류: {e}")
@@ -140,7 +140,7 @@ class NetClient:
   while self.running:
      try:
          # UDP 데이터그램 수신
-         data, addr = self.udp_sock.recvfrom(65535)
+         data, addr = self.udp_socket.recvfrom(65535)
          if len(data) < packet.HEADER_SIZE:
              continue
          header = data[:packet.HEADER_SIZE]
