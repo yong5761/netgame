@@ -72,4 +72,11 @@ void HitJudge::CheckCooldown() {
 
 void HitJudge::SendResult(int defenderNum) {
     printf("[HitJudge] SendResult 호출\n");
+
+    HitResultBody body = m_result;
+    body.Hton();
+
+    PacketHeader header{};
+    header.size = htons(static_cast<uint16_t>(sizeof(HitResultBody)));
+    header.type = PKT_HIT_RESULT;
 }
