@@ -32,6 +32,15 @@ void HitJudge::Verify() {
         return;
     if (m_report.damage == 0)
         return;
+
+    m_valid = true;
+
+    CheckDistance();
+
+    if (!m_valid)
+        return;
+
+    CheckCooldown();
 }
 
 void HitJudge::CheckDistance() {
