@@ -24,6 +24,9 @@ void HitJudge::HandleReport(int attackerNum, int defenderNum) {
 
 void HitJudge::Verify() {
     printf("[HitJudge] Verify 호출\n");
+    m_valid = false;
+
+
 }
 
 void HitJudge::CheckDistance() {
