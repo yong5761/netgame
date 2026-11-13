@@ -79,4 +79,9 @@ void HitJudge::SendResult(int defenderNum) {
     PacketHeader header{};
     header.size = htons(static_cast<uint16_t>(sizeof(HitResultBody)));
     header.type = PKT_HIT_RESULT;
+
+    char buffer[sizeof(PacketHeader) + sizeof(HitResultBody)];
+
+    memcpy(buffer, &header, sizeof(header));
+    memcpy(buffer + sizeof(header), &body, sizeof(body));
 }
