@@ -45,6 +45,13 @@ void HitJudge::Verify() {
 
 void HitJudge::CheckDistance() {
     printf("[HitJudge] CheckDistance 호출\n");
+    if (!m_valid)
+        return;
+
+    const PlayerState& attacker = m_playerStates[m_report.attacker];
+    const PlayerState& defender = m_playerState[m_report.victim];
+
+    int distance = std::abs(static_cast<int>(attacker.x)-static_cast<int>(defender.x))
 }
 
 void HitJudge::CheckCooldown() {
