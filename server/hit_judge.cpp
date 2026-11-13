@@ -26,7 +26,12 @@ void HitJudge::Verify() {
     printf("[HitJudge] Verify 호출\n");
     m_valid = false;
 
-
+    if (m_report.guard > 1)
+        return;
+    if (m_report.guard == 1)
+        return;
+    if (m_report.damage == 0)
+        return;
 }
 
 void HitJudge::CheckDistance() {
