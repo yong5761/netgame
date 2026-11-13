@@ -89,29 +89,6 @@ def unpack_header(buf):
 
 
 
-def unpack_tick_s2c(body):
-    if len(body) != TICK_S2C_SIZE:
-        raise ValueError("잘못된 TICK_S2C 패킷 크기")
-    data = struct.unpack(TICK_S2C_FORMAT, body)
-    return {
-        "seq": data[0],
-        "p1": {
-            "x": data[1],
-            "y": data[2],
-            "face": data[3],
-            "state": data[4],
-        },
-        "p2": {
-            "x": data[5],
-            "y": data[6],
-            "face": data[7],
-            "state": data[8],
-        },
-        "p1_hp": data[9],
-        "p2_hp": data[10],
-        "remaining_time": data[11]
-    }
-
 
 # =========================================================
 # 본문 구조체 포맷 (C++ packet.h와 1:1 대응)
@@ -175,64 +152,126 @@ assert TICK_S2C_SIZE == 22
 # AssignBody
 def pack_assign(player):
     return struct.pack(ASSIGN_FORMAT, player)
+def unpack_assign(body):
+    if len(body) != ASSIGN_SIZE:
+        raise ValueError("잘못된 ASSIGN_SIZE 패킷 크기")
+    (player,) = struct.unpack(ASSIGN_FORMAT, body)
+    return player
 # SelectBody
 def pack_select(char_num):
     return struct.pack(SELECT_FORMAT, char_num)
+def unpack_select(body):
+    if len(body) != SELECT_SIZE:
+        raise ValueError("잘못된 SELECT_SIZE 패킷 크기")
+    (char_num,) = struct.unpack(SELECT_FORMAT, body)
+    return char_num
 # MatchStartBody
 def pack_match_start(char_num):
     return struct.pack(MATCH_START_FORMAT, *char_num)
+def unpack_match_start(body):
+    if len(body) != MATCH_START_SIZE:
+        raise ValueError("잘못된 MATCH_START_SIZE 패킷 크기")
+    (char_num,) = struct.unpack(MATCH_START_FORMAT, body)
+    return char_num
 # RoundStartBody
 def pack_round_start(start_x, hp, round_num):
-    return struct.pack(
-        ROUND_START_FORMAT,
-        start_x[0], start_x[1],
-        hp[0], hp[1],
-        round_num
-    )
+    return struct.pack(ROUND_START_FORMAT, start_x[0], start_x[1], hp[0], hp[1], round_num)
+def unpack_round_start(body):
+    if len(body) != ROUND_START_SIZE:
+        raise ValueError("잘못된 ROUND_START_SIZE 패킷 크기")
+    data = struct.unpack(ROUND_START_FORMAT, body)
+    return {
+        'start_x1': data[0], 'start_x2': data[1],
+        'hp1': data[2], 'hp2': data[3],
+        'round_num': data[4]
+    }
 # HitReportBody
 def pack_hit_report(victim, attacker, damage, guard):
-    return struct.pack(
-        HIT_REPORT_FORMAT,
-        victim, attacker, damage, guard
-    )
+    return struct.pack(HIT_REPORT_FORMAT, victim, attacker, damage, guard)
+def unpack_hit_report(body):
+    if len(body) != HIT_REPORT_SIZE:
+        raise ValueError("잘못된 HIT_REPORT_SIZE 패킷 크기")
+    data = struct.unpack(HIT_REPORT_FORMAT, body)
+    return {
+        'victim': data[0],
+        'attacker': data[1],
+        'damage': data[2],
+        'guard': data[3]
+    }
 # HitResultBody
 def pack_hit_result(victim, attacker, damage, hp, knock_x):
-    return struct.pack(
-        HIT_RESULT_FORMAT,
-        victim, attacker, damage, hp, knock_x
-    )
+    return struct.pack(HIT_RESULT_FORMAT, victim, attacker, damage, hp, knock_x)
+def unpack_hit_result(body):
+    if len(body) != HIT_RESULT_SIZE:
+        raise ValueError("잘못된 HIT_RESULT_SIZE 패킷 크기")
+    data = struct.unpack(HIT_RESULT_FORMAT, body)
+    return {
+        'victim': data[0],
+        'attacker': data[1],
+        'damage': data[2],
+        'hp': data[3],
+        'knock_x': data[4]
+    }
 # RoundEndBody
 def pack_round_end(winner, win_count, match_over):
-    return struct.pack(
-        ROUND_END_FORMAT,
-        winner, win_count[0], win_count[1], match_over
-    )
+    return struct.pack(ROUND_END_FORMAT, winner, win_count[0], win_count[1], match_over)
+def unpack_round_end(body):
+    if len(body) != ROUND_END_SIZE:
+        raise ValueError("잘못된 ROUND_END_SIZE 패킷 크기")
+    data = struct.unpack(ROUND_END_FORMAT, body)
+    return {'winner': data[0],
+            'win_count1': data[1],
+            'win_count2':data[2],
+            'match_over': data[3]
+            }
 # TickC2SBody
 def pack_tick_c2s(seq, player, keys, x, y, face, state, frame, flag):
-    print("2seq:", seq)
-    print("1keys:", keys)
-    print("1player:", player)
-    print("2x:", x)
-    print("2y:", y)
-    print("1face:", face)
-    print("1state:", state)
-    print("1frame:", frame)
-    print("1flag:", flag)
     return struct.pack(TICK_C2S_FORMAT, seq, player, keys, x, y, face, state, frame, flag)
-
+def unpack_tick_c2s(body):
+    if len(body) != TICK_C2S_SIZE:
+        raise ValueError("잘못된 TICK_C2S_SIZE 패킷 크기")
+    data =  struct.unpack(TICK_C2S_FORMAT,body)
+    return {
+        'seq': data[0],
+        'player': data[1],
+        'keys': data[2],
+        'x': data[3],
+        'y': data[4],
+        'face': data[5],
+        'state': data[6],
+        'frame': data[7],
+        'flag': data[8]
+    }
 # PlayerState
 def pack_player_state(x, y, face, state, frame, flag):
-    return struct.pack(
-        PLAYER_STATE_FORMAT,
-        x, y, face, state, frame, flag
-    )
+    return struct.pack(PLAYER_STATE_FORMAT, x, y, face, state, frame, flag)
+def unpack_player_state(body):
+    if len(body) != PLAYER_STATE_SIZE:
+        raise ValueError("잘못된 PLAYER_STATE_SIZE 패킷 크기")
+    data = struct.unpack(PLAYER_STATE_FORMAT, body)
+    return {
+        "x": data[0], "y": data[1],
+        "face": data[3], "state": data[4],
+        "frame": data[5], "flag": data[6]
+    }
 # TickS2CBody
 def pack_tick_s2c(seq, p1, p2, hp, time_left):
-    return struct.pack(
-        TICK_S2C_FORMAT,
-        seq,
-        *p1,
-        *p2,
-        hp[0], hp[1],
-        time_left
-    )
+    return struct.pack(TICK_S2C_FORMAT, seq, *p1, *p2, hp[0], hp[1], time_left)
+def unpack_tick_s2c(body):
+    if len(body) != TICK_S2C_SIZE:
+        raise ValueError("잘못된 TICK_S2C_SIZE 패킷 크기")
+    data = struct.unpack(TICK_S2C_FORMAT, body)
+    return {
+        "seq": data[0],
+        "p1": {
+            "x": data[1], "y": data[2],
+            "face": data[3], "state": data[4],
+        },
+        "p2": {
+            "x": data[5], "y": data[6],
+            "face": data[7], "state": data[8],
+        },
+        "p1_hp": data[9],
+        "p2_hp": data[10],
+        "remaining_time": data[11]
+    }
