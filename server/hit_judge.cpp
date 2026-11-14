@@ -38,8 +38,6 @@ void HitJudge::Verify() {
         return;
     if (m_report.guard == 1)
         return;
-    if (m_report.damage == 0)
-        return;
 
     if (m_report.damage != 5 && m_report.damage != 10)
         return;
