@@ -94,6 +94,11 @@ void HitJudge::CheckCooldown() {
 void HitJudge::SendResult(int defenderNum) {
     printf("[HitJudge] SendResult 호출\n");
 
+    if (defenderNum < 0 || defenderNum >= 2)
+        return;
+    if (m_result.victim != defenderNum)
+        return;
+
     HitResultBody body = m_result;
     body.Hton();
 
