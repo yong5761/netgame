@@ -63,6 +63,9 @@ void HitJudge::CheckDistance() {
     const PlayerState& defender = m_playerStates[m_report.victim];
 
     int distance = abs(static_cast<int>(attacker.x) - static_cast<int>(defender.x));
+        
+    if (distance > m_minDist)
+        m_valid = false;   
 }
 
 void HitJudge::CheckCooldown() {
