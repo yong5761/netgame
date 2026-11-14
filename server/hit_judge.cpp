@@ -40,7 +40,7 @@ void HitJudge::Verify() {
     if (m_report.attacker == m_report.victim)
         return;
 
-    if (m_senderNum < 0 || m_report.victim)
+    if (m_senderNum != m_report.victim)
         return;
 
     if (m_report.guard > 1)
