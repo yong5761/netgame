@@ -28,6 +28,15 @@ void HitJudge::Verify() {
     printf("[HitJudge] Verify 호출\n");
     m_valid = false;
 
+    if (m_minDist <= 0.f)
+        return;
+
+    if (m_report.attacker >= 2 || m_report.victim >= 2)
+        return;
+
+    if (m_senderNum < 0 || m_senderNum >= 2)
+        return;
+
     if (m_report.attacker == m_report.victim)
         return;
 
