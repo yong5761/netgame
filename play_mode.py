@@ -11,7 +11,8 @@ from interaction import HitBoxManager
 
 import packet
 import net_state
-
+from round_sync import *
+from remote_controller import RemoteController
 TICK_INTERVAL = 0.05# 1/frame
 tick_timer = 0.0
 
@@ -97,7 +98,7 @@ def init():
         common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
 
     # p2의 캐릭터 생성/멀티용 캐릭터 생성
-    if common.game_mode == 'Two Player' or net_state.is_connected:
+    if common.game_mode == 'Two Player':
         if common.p2_character_num == 0:
             common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
         elif common.p2_character_num == 1:
@@ -108,6 +109,21 @@ def init():
     if common.stage_num == 0 and common.game_mode == 'Single Player':
         common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
         common.ai_player = AIController(common.c2, common.c1)
+
+    if common.game_mode == 'Network' and net_state.is_connected:
+        if common.p2_character_num == 0:
+            common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+        elif common.p2_character_num == 1:
+            common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+        elif common.p2_character_num == 2:
+            common.c2 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+        if net_state.my_player_num == 0:
+            net_state.remote_player = RemoteController(common.c2)
+        else:
+            net_state.remote_player = RemoteController(common.c1)
+
+
+
     common.characters = [common.c1, common.c2]
     common.p1_HpBar = HpBar(common.c1, 175, 550)
     common.p2_HpBar = HpBar(common.c2, 625, 550)
@@ -131,18 +147,13 @@ def init():
         game_world.add_object(c)
 
 def update():
-    global round_over, round_over_timer,round_reset_timer, tick_timer
+    global round_over, round_over_timer,round_reset_timer
 
+    # 네트워크 게임 데이터 수신
+    if common.game_mode == 'Network' and net_state.is_connected:
+        recv_tick_packet()
     # 기존 게임 업데이트
     game_world.update()
-
-    # 네트워크 입력 전송
-    if net_state.is_connected:
-        tick_timer += game_framework.frame_time
-
-        while tick_timer >= TICK_INTERVAL:
-            tick_timer -= TICK_INTERVAL
-            send_tick_packet()
 
     common.c1, common.c2 = common.characters
     if common.game_mode == 'Single Player':
@@ -185,6 +196,10 @@ def update():
         common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])
         common.hitbox_manager.detect_attack_hits()
 
+    # 네트워크 입력 전송
+    if net_state.is_connected:
+        send_tick_packet()
+
 def draw():
     clear_canvas()
     game_world.render()
@@ -203,7 +218,8 @@ def get_key_mask():
     for key in pressed_keys:
         keys |= packet.KEY_TO_MASK.get(key, 0)
     return keys
-
+instant_tick_time = 0.016
+# 패킷 송신
 def send_tick_packet():
     if not net_state.is_connected:
         return
@@ -227,5 +243,36 @@ def send_tick_packet():
         int(my_character.frame),
         flag
     )
-    if net_state.network.send_tick(body):
+    if common.net_client_obj.send_tick(body):
         net_state.send_seq = (net_state.send_seq + 1) & 0xFFFF
+# 패킷 수신
+def recv_tick_packet():
+    if not net_state.is_connected:
+        return
+    while True:
+        packet_data = common.net_client_obj.pop_packet()
+
+        if packet_data is None:
+            break
+
+        packet_type, body = packet_data
+
+        if packet_type == packet.PKT_TICK_S2C and len(body) >= packet.TICK_S2C_SIZE:
+            data = packet.unpack_tick_s2c(body)
+
+            # 라운드 공통 정보
+            apply_round_sync(data)
+
+            # 상대 플레이어 정보
+            if net_state.my_player_num == 0:
+                remote_data = data["p2"]
+            else:
+                remote_data = data["p1"]
+            net_state.remote_player.apply_tick(remote_data)
+        elif packet_type == packet.PKT_HIT_RESULT and len(body) >= packet.HIT_RESULT_SIZE:
+            data = packet.unpack_hit_result(body)
+            # 피격 결과 반영
+        elif packet_type == packet.PKT_ROUND_END and len(body) >= packet.ROUND_END_SIZE:
+            data = packet.unpack_round_end(body)
+            # 경기 종료 반영
+            handle_round_end(data)

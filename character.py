@@ -1003,6 +1003,25 @@ class Character:
             }
         )
 
+        self.state_map = {
+            packet.STATE_IDLE: self.IDLE,
+            packet.STATE_WALK: self.WALK,
+            packet.STATE_JUMP: self.JUMP,
+            packet.STATE_MOVE_JUMP: self.MOVE_JUMP,
+            packet.STATE_RUN: self.RUN,
+            packet.STATE_RUN_JUMP: self.RUN_JUMP,
+            packet.STATE_BACK_DASH: self.BACK_DASH,
+            packet.STATE_SIT_DOWN: self.SIT_DOWN,
+            packet.STATE_SIT_UP: self.SIT_UP,
+            packet.STATE_NORMAL_ATTACK: self.NORMAL_ATTACK,
+            packet.STATE_AIR_ATTACK: self.AIR_ATTACK,
+            packet.STATE_SIT_ATTACK: self.SIT_ATTACK,
+            packet.STATE_GUARD: self.GUARD,
+            packet.STATE_GET_HIT: self.GET_HIT,
+            packet.STATE_COMBO_ATTACK: self.COMBO_ATTACK,
+            packet.STATE_DEAD: self.DEAD
+        }
+
     def reset(self, x, y):
         self.hp = 100
         self.atk = 5
@@ -1111,27 +1130,27 @@ class Character:
         else:
             hitbox.update((sx - w + offset_width, self.yPos - h, CHARACTER_WIDTH_SCALE * w - offset_width, CHARACTER_HEIGHT_SCALE*h))
 
-    def get_state_id(self):
-        state_map = {
-            self.IDLE: packet.STATE_IDLE,
-            self.WALK: packet.STATE_WALK,
-            self.JUMP: packet.STATE_JUMP,
-            self.MOVE_JUMP: packet.STATE_RUN,
-            self.RUN: packet.STATE_RUN,
-            self.RUN_JUMP: packet.STATE_RUN_JUMP,
-            self.BACK_DASH: packet.STATE_BACK_DASH,
-            self.SIT_DOWN: packet.STATE_SIT_DOWN,
-            self.SIT_UP: packet.STATE_SIT_UP,
-            self.NORMAL_ATTACK: packet.STATE_NORMAL_ATTACK,
-            self.AIR_ATTACK: packet.STATE_AIR_ATTACK,
-            self.SIT_ATTACK: packet.STATE_SIT_ATTACK,
-            self.GUARD: packet.STATE_GUARD,
-            self.GET_HIT: packet.STATE_GET_HIT,
-            self.COMBO_ATTACK: packet.STATE_COMBO_ATTACK,
-            self.DEAD: packet.STATE_DEAD
-        }
-        current_state = self.state_machine.cur_state
-        return state_map.get(current_state, 0)
+        def get_state_id(self):
+            state_map = {
+                self.IDLE: packet.STATE_IDLE,
+                self.WALK: packet.STATE_WALK,
+                self.JUMP: packet.STATE_JUMP,
+                self.MOVE_JUMP: packet.MOVE_JUMP,
+                self.RUN: packet.STATE_RUN,
+                self.RUN_JUMP: packet.STATE_RUN_JUMP,
+                self.BACK_DASH: packet.STATE_BACK_DASH,
+                self.SIT_DOWN: packet.STATE_SIT_DOWN,
+                self.SIT_UP: packet.STATE_SIT_UP,
+                self.NORMAL_ATTACK: packet.STATE_NORMAL_ATTACK,
+                self.AIR_ATTACK: packet.STATE_AIR_ATTACK,
+                self.SIT_ATTACK: packet.STATE_SIT_ATTACK,
+                self.GUARD: packet.STATE_GUARD,
+                self.GET_HIT: packet.STATE_GET_HIT,
+                self.COMBO_ATTACK: packet.STATE_COMBO_ATTACK,
+                self.DEAD: packet.STATE_DEAD
+            }
+            current_state = self.state_machine.cur_state
+            return state_map.get(current_state, 0)
 
     def get_flag(self):
         flag = 0

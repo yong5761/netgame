@@ -17,4 +17,4 @@ last_recv_seq   = -1                # UDP 순번. 이보다 작으면 버린다
 
 send_seq        = 0                 # 전송할 UDP순번
 
-network = None                      # net_client 객체
+remote_player = None

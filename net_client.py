@@ -141,18 +141,24 @@ class NetClient:
      try:
          # UDP 데이터그램 수신
          data, addr = self.udp_socket.recvfrom(65535)
+
          if len(data) < packet.HEADER_SIZE:
              continue
+
          header = data[:packet.HEADER_SIZE]
          body = data[packet.HEADER_SIZE:]
+
          size, pkt_type = packet.unpack_header(header)
-         # 본문 크기 검사
-         if len(body) != size or pkt_type != packet.PKT_TICK_C2S:
+         # 타입, 본문 크기 검사
+         if len(body) != size or pkt_type != packet.PKT_TICK_S2C:
              continue
          # UDP 순번 검사 (2바이트, 빅 엔디안)
          seq = struct.unpack("!H", body[:2])[0]
-         if seq <= net_state.last_recv_seq:
+
+         diff = (seq - net_state.last_recv_seq) & 0xFFFF
+         if not (0 < diff and diff < 0x8000):
              continue
+
          net_state.last_recv_seq = seq
          # 수신 큐에 저장
          net_state.recv_queue.put((pkt_type, body))
