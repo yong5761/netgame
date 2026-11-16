@@ -59,6 +59,10 @@ void SessionManager::Remove(int playerNum) {
     if (playerNum < 0 || playerNum >= 2) return;
     EnterCriticalSection(&m_sessionLock);
     m_sessions[playerNum] = nullptr; // 메모리 해제는 RecvThreadProc 에서
+    if (!m_sessions[0] && !m_sessions[1]) {
+        m_matchStarted = false;
+        printf("[SessionManager] 모든 플레이어 퇴장 — 경기 상태 초기화\n");
+    }
     LeaveCriticalSection(&m_sessionLock);
     printf("[SessionManager] Player %d 접속 종료\n", playerNum);
 }
