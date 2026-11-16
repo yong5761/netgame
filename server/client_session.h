@@ -18,6 +18,10 @@ public:
     bool   IsAlive()      const  { return m_alive; }
     int    GetCharNum()   const  { return m_charNum; }
 
+    void        SetUdpAddr(const sockaddr_in& addr) { m_udpAddr = addr; m_udpAddrKnown = true; }
+    sockaddr_in GetUdpAddr()  const { return m_udpAddr; }
+    bool        HasUdpAddr()  const { return m_udpAddrKnown; }
+
     static DWORD WINAPI RecvThreadProc(LPVOID param);
 
 private:
@@ -26,5 +30,7 @@ private:
     int             m_playerNum;
     bool            m_alive;
     int             m_charNum;
+    sockaddr_in     m_udpAddr;
+    bool            m_udpAddrKnown;
     SessionManager* m_mgr;
 };

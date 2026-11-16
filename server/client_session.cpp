@@ -6,7 +6,8 @@
 #include <cstdint>
 
 ClientSession::ClientSession(SOCKET sock, sockaddr_in addr, int playerNum, SessionManager* mgr)
-    : m_sock(sock), m_addr(addr), m_playerNum(playerNum), m_alive(true), m_charNum(-1), m_mgr(mgr)
+    : m_sock(sock), m_addr(addr), m_playerNum(playerNum), m_alive(true), m_charNum(-1),
+      m_udpAddr{}, m_udpAddrKnown(false), m_mgr(mgr)
 {
 }
 
