@@ -1135,7 +1135,7 @@ class Character:
             self.IDLE: packet.STATE_IDLE,
             self.WALK: packet.STATE_WALK,
             self.JUMP: packet.STATE_JUMP,
-            self.MOVE_JUMP: packet.MOVE_JUMP,
+            self.MOVE_JUMP: packet.STATE_MOVE_JUMP,
             self.RUN: packet.STATE_RUN,
             self.RUN_JUMP: packet.STATE_RUN_JUMP,
             self.BACK_DASH: packet.STATE_BACK_DASH,

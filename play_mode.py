@@ -73,7 +73,7 @@ def handle_events():
                 # 키 입력 상태 저장
                 pressed_keys.add(event.key)
                 # 멀티인 경우
-                if net_state.is_connected:
+                if common.game_mode == 'Network' and net_state.is_connected:
                     # 내 캐릭터에만 이벤트 전달
                     my_character = common.characters[net_state.my_player_num]
                     my_character.handle_event(event)
@@ -202,7 +202,7 @@ def update():
         common.hitbox_manager.detect_attack_hits()
 
     # 네트워크 입력 전송
-    if net_state.is_connected:
+    if common.game_mode == 'Network' and net_state.is_connected:
         send_tick_packet()
 
 def draw():
@@ -278,7 +278,7 @@ def recv_tick_packet():
                     continue
             net_state.last_recv_seq = data["seq"]
             # 라운드 공통 정보
-            apply_round_sync(data)
+
             # 상대 플레이어 정보
             if net_state.my_player_num == 0:
                 remote_data = data["p2"]
