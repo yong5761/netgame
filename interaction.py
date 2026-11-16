@@ -1,5 +1,5 @@
 from pico2d import draw_rectangle
-
+import round_sync
 
 class HitBox:
     def __init__(self, owner, hb_kind:str, rect:tuple[float, float, float, float]):
@@ -14,6 +14,7 @@ class HitBox:
 class HitBoxManager:
     def __init__(self):
         self.hitboxes = []
+        self.hit_reported = False
 
     def register_hitbox(self, hitbox: HitBox):
         self.hitboxes.append(hitbox)
@@ -95,6 +96,41 @@ class HitBoxManager:
         target.get_damage = False
         target.xPos += (40 * attacker.face_dir)  # 넉백 효과
         target.state_machine.handle_state_event(('HITTED', None))
+
+    def detect_online_hit(self, characters, my_player_num):
+        # 플레이어 번호를 받기 전에는 검사하지 않음
+        if my_player_num not in (0, 1):
+            return False
+
+        if len(characters) != 2:
+            return False
+
+        victim_num = my_player_num
+        attacker_num = 1 - my_player_num
+
+        target = characters[victim_num]
+        attacker = characters[attacker_num]
+
+        # 공격 박스가 사라지면 다음 공격을 보고할 수 있게 초기화
+        _, _, width, height = attacker.attack_hitbox.rect
+        if width == 0 or height == 0:
+            self.hit_reported = False
+            return False
+
+        if self.hit_reported:
+            return False
+
+        if not target.get_damage:
+            return False
+
+        if not self.collision_check(attacker.attack_hitbox, target.body_hitbox):
+            return False
+
+        queued = round_sync.report_hit(victim_num, attacker_num, attacker.atk, target.is_guarding)
+        if queued:
+            self.hit_reported = True
+
+        return queued
 
     def detect_attack_hits(self):
         body_boxes = [hb for hb in self.hitboxes if hb.hb_kind == 'body']
