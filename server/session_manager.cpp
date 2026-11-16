@@ -19,6 +19,10 @@ void SessionManager::Init() {
     m_sessions[0]  = nullptr;
     m_sessions[1]  = nullptr;
     m_matchStarted = false;
+    m_seqInitialized[0] = m_seqInitialized[1] = false;
+    memset(m_lastSeq, 0, sizeof(m_lastSeq));
+    memset(m_latest,  0, sizeof(m_latest));
+    InitializeCriticalSection(&m_stateLock);
     InitializeCriticalSection(&m_sessionLock);
     m_initialized = true;
 }
@@ -38,6 +42,7 @@ void SessionManager::Destroy() {
 
     Sleep(200); // recv 스레드 정리 대기
     DeleteCriticalSection(&m_sessionLock);
+    DeleteCriticalSection(&m_stateLock);
     m_initialized = false;
 }
 
@@ -57,13 +62,22 @@ int SessionManager::Add(ClientSession* session) {
 
 void SessionManager::Remove(int playerNum) {
     if (playerNum < 0 || playerNum >= 2) return;
+    bool allGone = false;
     EnterCriticalSection(&m_sessionLock);
     m_sessions[playerNum] = nullptr; // 메모리 해제는 RecvThreadProc 에서
     if (!m_sessions[0] && !m_sessions[1]) {
         m_matchStarted = false;
+        allGone = true;
         printf("[SessionManager] 모든 플레이어 퇴장 — 경기 상태 초기화\n");
     }
     LeaveCriticalSection(&m_sessionLock);
+    if (allGone) {
+        EnterCriticalSection(&m_stateLock);
+        m_seqInitialized[0] = m_seqInitialized[1] = false;
+        memset(m_lastSeq, 0, sizeof(m_lastSeq));
+        memset(m_latest,  0, sizeof(m_latest));
+        LeaveCriticalSection(&m_stateLock);
+    }
     printf("[SessionManager] Player %d 접속 종료\n", playerNum);
 }
 
@@ -151,4 +165,30 @@ void SessionManager::SendToAll(const char* buf, int len) {
                 printf("[SendToAll] Player %d send 실패: %d\n", i, WSAGetLastError());
         }
     }
+}
+
+void SessionManager::OnTickReceived(int playerNum, const TickC2SBody& body, const sockaddr_in& from) {
+    EnterCriticalSection(&m_sessionLock);
+    if (m_sessions[playerNum] && m_sessions[playerNum]->IsAlive())
+        m_sessions[playerNum]->SetUdpAddr(from);
+    LeaveCriticalSection(&m_sessionLock);
+
+    EnterCriticalSection(&m_stateLock);
+    bool firstPacket = !m_seqInitialized[playerNum];
+    bool isNew = firstPacket ||
+                 ((uint16_t)(body.seq - m_lastSeq[playerNum]) < 0x8000u);
+    if (isNew) {
+        m_seqInitialized[playerNum] = true;
+        m_lastSeq[playerNum]        = body.seq;
+        m_latest[playerNum].x       = body.x;
+        m_latest[playerNum].y       = body.y;
+        m_latest[playerNum].face    = body.face;
+        m_latest[playerNum].state   = body.state;
+        m_latest[playerNum].frame   = body.frame;
+        m_latest[playerNum].flag    = body.flag;
+    }
+    LeaveCriticalSection(&m_stateLock);
+
+    if (firstPacket && isNew)
+        printf("[UdpRecvLoop] Player %d 첫 틱 수신 (seq=%u)\n", playerNum, (unsigned)body.seq);
 }
