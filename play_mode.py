@@ -258,17 +258,23 @@ def recv_tick_packet():
         packet_type, body = packet_data
 
         if packet_type == packet.PKT_TICK_S2C and len(body) >= packet.TICK_S2C_SIZE:
+
             data = packet.unpack_tick_s2c(body)
 
+            if net_state.last_recv_seq >= 0:
+                diff = (data["seq"] - net_state.last_recv_seq) & 0xFFFF
+                if 0 < diff < 0x8000:
+                    continue
+            net_state.last_recv_seq = data["seq"]
             # 라운드 공통 정보
             apply_round_sync(data)
-
             # 상대 플레이어 정보
             if net_state.my_player_num == 0:
                 remote_data = data["p2"]
             else:
                 remote_data = data["p1"]
             net_state.remote_player.apply_tick(remote_data)
+
         elif packet_type == packet.PKT_HIT_RESULT and len(body) >= packet.HIT_RESULT_SIZE:
             data = packet.unpack_hit_result(body)
             # 피격 결과 반영
