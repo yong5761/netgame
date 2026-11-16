@@ -122,9 +122,9 @@ def init():
     if common.game_mode == 'Network' and net_state.is_connected:
         # select모드에서 캐릭터 생성됨
         if net_state.my_player_num == 0:
-            net_state.remote_player = RemoteController(common.c2)
+            common.ai_player = RemoteController(common.c2)
         else:
-            net_state.remote_player = RemoteController(common.c1)
+            common.ai_player = RemoteController(common.c1)
         wait_round_start()
 
 
@@ -224,21 +224,8 @@ def get_key_mask():
         keys |= packet.KEY_TO_MASK.get(key, 0)
     return keys
 def wait_round_start():
-    pkt_type, body = None, None
-    while True:
-        try:
-            pkt_type, body = net_state.recv_queue.get(timeout=1.0)
-        except queue.Empty:
-            continue
-
-        if pkt_type == packet.PKT_ROUND_START:
-            break
-
-        pending_packets.append((pkt_type, body))
-    packet.unpack_round_start(body)
-    while pending_packets:
-        pkt_type, body = pending_packets.pop(0)
-        handle_network_packet(pkt_type, body)
+    # ROUND_START 처리 [A]
+    pass
 
 
 
