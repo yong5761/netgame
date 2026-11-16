@@ -9,14 +9,16 @@ from ai_controller import AIController
 from character_frame import *
 from interaction import HitBoxManager
 
+import queue
 import packet
 import net_state
 from round_sync import *
 from remote_controller import RemoteController
-TICK_INTERVAL = 0.05# 1/frame
+TICK_INTERVAL = 0.017# 1/frame
 tick_timer = 0.0
 
 pressed_keys = set()# 현재 누르고 있는 키
+pending_packets = []
 
 running = True
 debug_hitbox = False
@@ -90,15 +92,22 @@ def init():
     game_world.add_object(common.palace_map)
     game_world.add_object(common.game_timer, 1)
     # p1의 캐릭터 생성
-    if common.p1_character_num == 0:
-        common.c1 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
-    elif common.p1_character_num == 1:
-        common.c1 = Character(KimFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
-    elif common.p1_character_num == 2:
-        common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+    if common.game_mode == 'Single Player':
+        if common.p1_character_num == 0:
+            common.c1 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        elif common.p1_character_num == 1:
+            common.c1 = Character(KimFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        elif common.p1_character_num == 2:
+            common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
 
     # p2의 캐릭터 생성/멀티용 캐릭터 생성
     if common.game_mode == 'Two Player':
+        if common.p1_character_num == 0:
+            common.c1 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        elif common.p1_character_num == 1:
+            common.c1 = Character(KimFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        elif common.p1_character_num == 2:
+            common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
         if common.p2_character_num == 0:
             common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
         elif common.p2_character_num == 1:
@@ -111,16 +120,12 @@ def init():
         common.ai_player = AIController(common.c2, common.c1)
 
     if common.game_mode == 'Network' and net_state.is_connected:
-        if common.p2_character_num == 0:
-            common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
-        elif common.p2_character_num == 1:
-            common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
-        elif common.p2_character_num == 2:
-            common.c2 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+        # select모드에서 캐릭터 생성됨
         if net_state.my_player_num == 0:
             net_state.remote_player = RemoteController(common.c2)
         else:
             net_state.remote_player = RemoteController(common.c1)
+        wait_round_start()
 
 
 
@@ -218,6 +223,25 @@ def get_key_mask():
     for key in pressed_keys:
         keys |= packet.KEY_TO_MASK.get(key, 0)
     return keys
+def wait_round_start():
+    pkt_type, body = None, None
+    while True:
+        try:
+            pkt_type, body = net_state.recv_queue.get(timeout=1.0)
+        except queue.Empty:
+            continue
+
+        if pkt_type == packet.PKT_ROUND_START:
+            break
+
+        pending_packets.append((pkt_type, body))
+    packet.unpack_round_start(body)
+    while pending_packets:
+        pkt_type, body = pending_packets.pop(0)
+        handle_network_packet(pkt_type, body)
+
+
+
 instant_tick_time = 0.016
 # 패킷 송신
 def send_tick_packet():
@@ -277,8 +301,9 @@ def recv_tick_packet():
 
         elif packet_type == packet.PKT_HIT_RESULT and len(body) >= packet.HIT_RESULT_SIZE:
             data = packet.unpack_hit_result(body)
+            pass
             # 피격 결과 반영
         elif packet_type == packet.PKT_ROUND_END and len(body) >= packet.ROUND_END_SIZE:
             data = packet.unpack_round_end(body)
-            # 경기 종료 반영
-            handle_round_end(data)
+            # 경기 종료 반영 A가 구현한
+            pass
