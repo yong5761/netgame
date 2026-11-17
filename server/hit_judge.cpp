@@ -36,11 +36,7 @@ void HitJudge::HandleReport(int attackerNum, int defenderNum) {
         return;
 
     m_now = GetTickCount();
-
-    Verify();
-
-    if (!m_valid)
-        return;
+    m_ready = true;
 }
 
 void HitJudge::Verify() {
