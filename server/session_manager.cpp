@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <cstring>
 
+SessionManager* g_sessionMgr = nullptr;
+
 static void BuildAndSend(SOCKET sock, uint8_t pktType, const void* body, uint16_t bodyLen) {
     char buf[256];
     uint16_t netSize = htons(bodyLen);
@@ -25,6 +27,10 @@ void SessionManager::Init() {
     m_sendSeq     = 0;
     m_sendStarted = false;
     m_hp[0] = m_hp[1] = MAX_HP;
+    m_pendingSender    = -1;
+    m_hitReportLogged  = false;
+    memset(&m_pendingReport,  0, sizeof(m_pendingReport));
+    memset(m_pendingStates,   0, sizeof(m_pendingStates));
     InitializeCriticalSection(&m_stateLock);
     InitializeCriticalSection(&m_sessionLock);
     m_initialized = true;
@@ -80,6 +86,9 @@ void SessionManager::Remove(int playerNum) {
         memset(m_lastSeq, 0, sizeof(m_lastSeq));
         memset(m_latest,  0, sizeof(m_latest));
         m_hp[0] = m_hp[1] = MAX_HP;
+        m_pendingSender = -1;
+        memset(&m_pendingReport, 0, sizeof(m_pendingReport));
+        memset(m_pendingStates,  0, sizeof(m_pendingStates));
         LeaveCriticalSection(&m_stateLock);
     }
     printf("[SessionManager] Player %d 접속 종료\n", playerNum);
@@ -254,5 +263,78 @@ void SessionManager::BroadcastTick(SOCKET udpSock) {
                    sizeof(addrs[i])) == SOCKET_ERROR) {
             printf("[TickSendLoop] Player %d sendto 실패: %d\n", i, WSAGetLastError());
         }
+    }
+}
+
+void SessionManager::OnHitReport(int senderNum, const HitReportBody& report) {
+    int attackerNum = static_cast<int>(report.attacker);
+    int defenderNum = static_cast<int>(report.victim);
+    if (attackerNum < 0 || attackerNum >= 2 || defenderNum < 0 || defenderNum >= 2) return;
+
+    if (!m_hitReportLogged) {
+        m_hitReportLogged = true;
+        printf("[OnHitReport] Player %d 피격 보고 수신\n", senderNum);
+    }
+
+    EnterCriticalSection(&m_stateLock);
+    m_pendingReport = report;
+    memcpy(m_pendingStates, m_latest, sizeof(m_pendingStates));
+    m_pendingSender = senderNum;
+    LeaveCriticalSection(&m_stateLock);
+
+    m_judge.HandleReport(attackerNum, defenderNum);
+    m_judge.Verify();
+}
+
+bool SessionManager::GetPendingReport(HitReportBody& out) {
+    EnterCriticalSection(&m_stateLock);
+    bool has = (m_pendingSender != -1);
+    if (has) out = m_pendingReport;
+    LeaveCriticalSection(&m_stateLock);
+    return has;
+}
+
+bool SessionManager::GetPendingState(int playerNum, PlayerState& out) {
+    if (playerNum < 0 || playerNum >= 2) return false;
+    EnterCriticalSection(&m_stateLock);
+    out = m_pendingStates[playerNum];
+    LeaveCriticalSection(&m_stateLock);
+    return true;
+}
+
+int SessionManager::GetPendingSender() {
+    EnterCriticalSection(&m_stateLock);
+    int s = m_pendingSender;
+    LeaveCriticalSection(&m_stateLock);
+    return s;
+}
+
+void SessionManager::SendHitResult(int playerNum, const HitResultBody& body) {
+    HitResultBody toSend = body;
+    toSend.Hton();
+
+    if (playerNum == -1) {
+        SOCKET socks[2] = { INVALID_SOCKET, INVALID_SOCKET };
+        EnterCriticalSection(&m_sessionLock);
+        for (int i = 0; i < 2; i++) {
+            if (m_sessions[i] && m_sessions[i]->IsAlive())
+                socks[i] = m_sessions[i]->GetSock();
+        }
+        LeaveCriticalSection(&m_sessionLock);
+        for (int i = 0; i < 2; i++) {
+            if (socks[i] != INVALID_SOCKET)
+                BuildAndSend(socks[i], PKT_HIT_RESULT, &toSend,
+                             static_cast<uint16_t>(sizeof(toSend)));
+        }
+    } else {
+        if (playerNum < 0 || playerNum >= 2) return;
+        SOCKET sock = INVALID_SOCKET;
+        EnterCriticalSection(&m_sessionLock);
+        if (m_sessions[playerNum] && m_sessions[playerNum]->IsAlive())
+            sock = m_sessions[playerNum]->GetSock();
+        LeaveCriticalSection(&m_sessionLock);
+        if (sock != INVALID_SOCKET)
+            BuildAndSend(sock, PKT_HIT_RESULT, &toSend,
+                         static_cast<uint16_t>(sizeof(toSend)));
     }
 }
