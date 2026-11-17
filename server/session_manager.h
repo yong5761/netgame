@@ -7,6 +7,7 @@
 
 class SessionManager {
 public:
+    static const uint8_t MAX_HP = 100;
     void Init();
     void Destroy();
 
@@ -32,4 +33,5 @@ private:
 
     uint16_t         m_sendSeq;
     bool             m_sendStarted;
+    uint8_t          m_hp[2];
 };

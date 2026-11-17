@@ -24,6 +24,7 @@ void SessionManager::Init() {
     memset(m_latest,  0, sizeof(m_latest));
     m_sendSeq     = 0;
     m_sendStarted = false;
+    m_hp[0] = m_hp[1] = MAX_HP;
     InitializeCriticalSection(&m_stateLock);
     InitializeCriticalSection(&m_sessionLock);
     m_initialized = true;
@@ -78,6 +79,7 @@ void SessionManager::Remove(int playerNum) {
         m_seqInitialized[0] = m_seqInitialized[1] = false;
         memset(m_lastSeq, 0, sizeof(m_lastSeq));
         memset(m_latest,  0, sizeof(m_latest));
+        m_hp[0] = m_hp[1] = MAX_HP;
         LeaveCriticalSection(&m_stateLock);
     }
     printf("[SessionManager] Player %d 접속 종료\n", playerNum);
@@ -124,6 +126,10 @@ void SessionManager::OnCharSelected(int playerNum, uint8_t charNum) {
     LeaveCriticalSection(&m_sessionLock);
 
     if (doSend) {
+        EnterCriticalSection(&m_stateLock);
+        m_hp[0] = m_hp[1] = MAX_HP;
+        LeaveCriticalSection(&m_stateLock);
+
         MatchStartBody body;
         body.charNum[0] = chars[0];
         body.charNum[1] = chars[1];
@@ -196,10 +202,13 @@ void SessionManager::OnTickReceived(int playerNum, const TickC2SBody& body, cons
 }
 
 void SessionManager::BroadcastTick(SOCKET udpSock) {
-    // m_stateLock: m_latest 복사
+    // m_stateLock: m_latest, m_hp 복사
     PlayerState states[2];
+    uint8_t     hp[2];
     EnterCriticalSection(&m_stateLock);
     memcpy(states, m_latest, sizeof(states));
+    hp[0] = m_hp[0];
+    hp[1] = m_hp[1];
     LeaveCriticalSection(&m_stateLock);
 
     // m_sessionLock: matchStarted + UDP 주소 복사
@@ -227,9 +236,9 @@ void SessionManager::BroadcastTick(SOCKET udpSock) {
     body.seq      = m_sendSeq++;
     body.p[0]     = states[0];
     body.p[1]     = states[1];
-    body.hp[0]    = 0;
-    body.hp[1]    = 0;
-    body.timeLeft = 0;
+    body.hp[0]    = hp[0];
+    body.hp[1]    = hp[1];
+    body.timeLeft = 60;
     body.Hton();
 
     char buf[sizeof(PacketHeader) + sizeof(TickS2CBody)];
