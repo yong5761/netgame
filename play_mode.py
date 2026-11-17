@@ -161,45 +161,50 @@ def update():
     game_world.update()
 
     common.c1, common.c2 = common.characters
-    if common.game_mode == 'Single Player':
-        common.ai_player.update()
-        common.ai_player.run()
-    if common.c1.hp <= 0 or common.c2.hp<=0:
-        if not round_over:
-            round_over = True
-            round_over_timer = ROUND_OVER_DELAY
-        else:
-            round_over_timer -= game_framework.frame_time
-            if round_over_timer <= 0.0:
-                if common.c1.win_count >= 2 or common.c2.win_count >= 2:
-                    game_framework.change_mode(intro_mode)
-                else:
-                    reset_round()
-    elif common.game_timer.total_time >= 60.0:
-        if not round_over:
-            round_over = True
-            round_over_timer = ROUND_OVER_DELAY
-        else:
-            round_over_timer -= game_framework.frame_time
-            if round_over_timer <= 0.0:
-                if common.c1.hp > common.c2.hp:
-                    common.c1.win_count += 1
-                elif common.c2.hp > common.c1.hp:
-                    common.c2.win_count += 1
-                if common.c1.win_count >= 2 or common.c2.win_count >= 2:
-                    game_framework.change_mode(intro_mode)
-                else:
-                    reset_round()
-
+    # 히트박스
     if common.hitbox_manager == None:
         common.hitbox_manager = HitBoxManager()
 
-    # 이후 기존 호출들을 안전하게 호출
-    if common.hitbox_manager:
-        common.hitbox_manager.detect_body_overlaps()
-        common.hitbox_manager.detect_is_opponent_attacking()
-        common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])
-        common.hitbox_manager.detect_attack_hits()
+    if common.game_mode != 'Network':
+        if common.game_mode == 'Single Player':
+            common.ai_player.update()
+            common.ai_player.run()
+        if common.c1.hp <= 0 or common.c2.hp<=0:
+            if not round_over:
+                round_over = True
+                round_over_timer = ROUND_OVER_DELAY
+            else:
+                round_over_timer -= game_framework.frame_time
+                if round_over_timer <= 0.0:
+                    if common.c1.win_count >= 2 or common.c2.win_count >= 2:
+                        game_framework.change_mode(intro_mode)
+                    else:
+                        reset_round()
+        elif common.game_timer.total_time >= 60.0:
+            if not round_over:
+                round_over = True
+                round_over_timer = ROUND_OVER_DELAY
+            else:
+                round_over_timer -= game_framework.frame_time
+                if round_over_timer <= 0.0:
+                    if common.c1.hp > common.c2.hp:
+                        common.c1.win_count += 1
+                    elif common.c2.hp > common.c1.hp:
+                        common.c2.win_count += 1
+                    if common.c1.win_count >= 2 or common.c2.win_count >= 2:
+                        game_framework.change_mode(intro_mode)
+                    else:
+                        reset_round()
+
+        if common.hitbox_manager:
+            common.hitbox_manager.detect_body_overlaps()
+            common.hitbox_manager.detect_is_opponent_attacking()
+            common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])
+            common.hitbox_manager.detect_attack_hits()
+    elif common.game_mode == 'Network' and net_state.is_connected:
+        if common.hitbox_manager:
+            common.hitbox_manager.detect_is_opponent_attacking()
+            common.hitbox_manager.detect_online_hit([common.c1, common.c2], net_state.my_player_num)
 
     # 네트워크 입력 전송
     if common.game_mode == 'Network' and net_state.is_connected:
@@ -278,7 +283,7 @@ def recv_tick_packet():
                     continue
             net_state.last_recv_seq = data["seq"]
             # 라운드 공통 정보
-
+            apply_round_sync()
             # 상대 플레이어 정보
             if net_state.my_player_num == 0:
                 remote_data = data["p2"]
