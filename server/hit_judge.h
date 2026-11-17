@@ -16,7 +16,7 @@ private:
     void CheckCooldown();
     void SendResult(int defenderNum);
 
-    DWORD m_lastHitTick[2];
+    DWORD m_lastHitTick[2]{};
     float m_minDist{MAX_X_DISTANCE};
     DWORD m_cooldownMs{MIN_COOLDOWN_MS};
     bool m_hasLastHit[2]{};
