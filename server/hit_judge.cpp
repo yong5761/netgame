@@ -1,4 +1,5 @@
 #include "hit_judge.h"
+#include"session_manager.h"
 #include <cstdio>
 #include <stdlib.h>
 #include <string.h>
