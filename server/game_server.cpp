@@ -17,6 +17,12 @@ DWORD WINAPI GameServer::UdpThreadProc(LPVOID param) {
     return 0;
 }
 
+DWORD WINAPI GameServer::TickSendThreadProc(LPVOID param) {
+    GameServer* srv = static_cast<GameServer*>(param);
+    srv->TickSendLoop();
+    return 0;
+}
+
 GameServer::GameServer()
     : m_listenSock(INVALID_SOCKET)
     , m_udpSock(INVALID_SOCKET)
@@ -98,14 +104,27 @@ void GameServer::Run()
         CloseHandle(hAccept);
         return;
     }
+    HANDLE hTickSend = CreateThread(nullptr, 0, TickSendThreadProc, this, 0, nullptr);
+    if (!hTickSend) {
+        printf("[Run] TickSendThread 생성 실패: %d\n", GetLastError());
+        m_stopFlag = true;
+        Shutdown();
+        WaitForSingleObject(hAccept, 3000);
+        WaitForSingleObject(hUdp, 3000);
+        CloseHandle(hAccept);
+        CloseHandle(hUdp);
+        return;
+    }
     printf("서버 실행 중. 종료하려면 Enter 를 누르세요...\n");
     getchar();
     m_stopFlag = true;
     Shutdown();
     WaitForSingleObject(hAccept, 3000);
     WaitForSingleObject(hUdp, 3000);
+    WaitForSingleObject(hTickSend, 3000);
     CloseHandle(hAccept);
     CloseHandle(hUdp);
+    CloseHandle(hTickSend);
 }
 
 void GameServer::AcceptLoop()
@@ -144,6 +163,15 @@ void GameServer::AcceptLoop()
         CloseHandle(hRecv);
     }
     printf("[AcceptLoop] 종료\n");
+}
+
+void GameServer::TickSendLoop()
+{
+    while (!m_stopFlag) {
+        Sleep(50);
+        m_sessionMgr.BroadcastTick(m_udpSock);
+    }
+    printf("[TickSendLoop] 종료\n");
 }
 
 void GameServer::UdpRecvLoop()

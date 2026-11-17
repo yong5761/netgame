@@ -14,6 +14,8 @@ public:
     void Shutdown();
 
     static DWORD WINAPI UdpThreadProc(LPVOID param);
+    static DWORD WINAPI TickSendThreadProc(LPVOID param);
+    void TickSendLoop();
 
 private:
     SOCKET          m_listenSock;
