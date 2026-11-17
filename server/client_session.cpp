@@ -80,6 +80,14 @@ void ClientSession::RecvLoop() {
                         m_mgr->OnCharSelected(m_playerNum, charNum);
                     }
                 }
+            } else if (pktType == static_cast<uint8_t>(PKT_HIT_REPORT)) {
+                if (bodySize == static_cast<uint16_t>(sizeof(HitReportBody))) {
+                    HitReportBody body;
+                    memcpy(&body, accumBuf + 3, sizeof(HitReportBody));
+                    m_mgr->OnHitReport(m_playerNum, body);
+                } else {
+                    printf("[Session %d] PKT_HIT_REPORT 크기 불일치: %u\n", m_playerNum, bodySize);
+                }
             } else {
                 printf("[Session %d] pkt type=%u body=%u bytes\n",
                        m_playerNum, pktType, bodySize);

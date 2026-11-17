@@ -84,6 +84,7 @@ bool GameServer::Init(unsigned short port)
     }
 
     m_sessionMgr.Init();
+    g_sessionMgr = &m_sessionMgr;
     printf("[Init] 서버 준비 완료 — TCP/UDP 포트 %u\n", m_port);
     return true;
 }
@@ -209,6 +210,7 @@ void GameServer::UdpRecvLoop()
 void GameServer::Shutdown()
 {
     printf("[Shutdown] 서버 종료 중...\n");
+    g_sessionMgr = nullptr;
     m_sessionMgr.Destroy();
     if (m_listenSock != INVALID_SOCKET) {
         closesocket(m_listenSock);
