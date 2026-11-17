@@ -1,85 +1,64 @@
-from behavior_tree import BehaviorTree, Selector, Sequence, Condition, Action
+from operator import truediv
 from types import SimpleNamespace
 from pico2d import *
-from random import randint
-import packet
+from packet import *
 
 class RemoteController: # AIController 자리에 들어간다
  def __init__(self, character):
   self.ch = character
-  self.data = None
-
- def apply_tick(self, tick):
-  # 서버에서 받은 상대 플레이어 상태 저장
-  self.data = tick
+  self.packet_data = None
+  self.state = STATE_IDLE
+  self.state_map = {
+   STATE_IDLE: self.idle,
+   STATE_WALK: self.walk,
+   STATE_JUMP: self.jump,
+   STATE_MOVE_JUMP: self.move_jump,
+   STATE_RUN: self.run,
+   STATE_RUN_JUMP: self.run_jump,
+   STATE_BACK_DASH: self.back_dash,
+   STATE_SIT_DOWN: self.sit_down,
+   STATE_SIT_UP: self.sit_up,
+   STATE_NORMAL_ATTACK: self.normal_attack,
+   STATE_AIR_ATTACK: self.air_attack,
+   STATE_SIT_ATTACK: self.sit_attaack,
+   STATE_GUARD: self.guard,
+   STATE_GET_HIT: self.get_hit,
+   STATE_COMBO_ATTACK: self.combo_attack,
+   STATE_DEAD: self.dead
+  }
+ def apply_tick(self, data):
+  # 서버에서 받은 패킷 저장
+  self.packet_data = data
  def update(self):
-  if self.data is None:
+  if self.packet_data is None:
    return
   ch = self.ch
-  data = self.data
+  data = self.packet_data
 
   # 상태 동기화
   ch.xPos = data["x"]
   ch.yPos = data["y"]
   ch.face_dir = data["face"]
   # FSM 상태 동기화
+
   state_id = data["state"]
-  next_state = ch.get_state_object(state_id)
 
-  if next_state is not None:
-   current_state = ch.state_machine.cur_state
+  if state_id is not None:
+   last_state_id = ch.get_state_id()
 
-   if current_state != next_state:
-    current_state.exit(("NETWORK", next_state))
-    next_state.enter(("NETWORK", current_state))
-    ch.state_machine.cur_state = next_state
- def idle(self):
-  e = ('INPUT', SimpleNamespace(type=SDL_KEYUP, key=self.ch.keymap['left']))
-  self.ch.state_machine.handle_state_event(e)
-  e = ('INPUT', SimpleNamespace(type=SDL_KEYUP, key=self.ch.keymap['right']))
-  self.ch.state_machine.handle_state_event(e)
- def walk(self):
-  # face방향으로
-  if self.ch.face_dir == -1:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['left']))
-  else:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['right']))
-  self.ch.state_machine.handle_state_event(e)
- def jump(self):
-  e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['up']))
-  self.ch.state_machine.handle_state_event(e)
- def move_jump(self):
-  if self.ch.face_dir == -1:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['left']))
-  else:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['right']))
-  self.ch.state_machine.handle_state_event(e)
- def run(self):
-  if self.ch.face_dir == -1:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['left']))
-  else:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['right']))
- def run_jump(self):
-  if self.ch.face_dir == -1:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['left']))
-  else:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['right']))
- def back_dash(self):
-  if self.ch.face_dir == -1:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['right']))
-  else:
-   e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['left']))
-  self.ch.state_machine.handle_state_event(e)
- def sit_down(self):
-  e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['right']))
-  self.ch.state_machine.handle_state_event(e)
- def apply_state(self, state):
-  ch = self.ch
-  ch.state = state
-  # 공격 및 방어 관련 플래그
-  ch.is_attacking = state in (
-   packet.STATE_NORMAL_ATTACK,
-   packet.STATE_AIR_ATTACK,
-   packet.STATE_SIT_ATTACK,
-   packet.STATE_COMBO_ATTACK
-  )
+   if last_state_id != state_id:
+    self.ch.state_machine.cur_state.exit(None)
+    self.ch.state_machine.cur_state = self.state_map.get(state_id)
+    self.ch.state_machine.cur_state.enter(None)
+
+  ch.frame= data["frame"]
+
+  flag = data["flag"]
+  if flag & FLAG_ATTACKING:
+   self.ch.is_attacking = True
+  if flag & FLAG_GUARDING:
+   self.ch.is_guarding = True
+  if flag & FLAG_HITTED:
+   self.ch.is_hitted = True
+  if flag & FLAG_DAMAGEABLE:
+   self.ch.is_opponent_attacking = True

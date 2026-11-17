@@ -266,12 +266,13 @@ def unpack_tick_s2c(body):
         "p1": {
             "x": data[1], "y": data[2],
             "face": data[3], "state": data[4],
+            "frame": data[5], "flag": data[6],
         },
         "p2": {
-            "x": data[5], "y": data[6],
-            "face": data[7], "state": data[8],
+            "x": data[7], "y": data[8],
+            "face": data[9], "state": data[10],
+            "frame": data[11], "flag": data[12],
         },
-        "p1_hp": data[9],
-        "p2_hp": data[10],
-        "remaining_time": data[11]
+        "p1_hp": data[13], "p2_hp": data[14],
+        "remaining_time": data[15]
     }
