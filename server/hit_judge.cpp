@@ -114,20 +114,14 @@ void HitJudge::CheckCooldown() {
 void HitJudge::SendResult(int defenderNum) {
     printf("[HitJudge] SendResult 호출\n");
 
+    if (g_sessionMgr == nullptr)
+        return;
+
     if (defenderNum < 0 || defenderNum >= 2)
         return;
+
     if (m_result.victim != defenderNum)
         return;
 
-    HitResultBody body = m_result;
-    body.Hton();
-
-    PacketHeader header{};
-    header.size = htons(static_cast<uint16_t>(sizeof(HitResultBody)));
-    header.type = PKT_HIT_RESULT;
-
-    char buffer[sizeof(PacketHeader) + sizeof(HitResultBody)];
-
-    memcpy(buffer, &header, sizeof(header));
-    memcpy(buffer + sizeof(header), &body, sizeof(body));
+    g_sessionMgr->SendHitResult(-1, m_result);
 }
