@@ -17,6 +17,7 @@ public:
     void SendAssign(int playerNum);
     void OnCharSelected(int playerNum, uint8_t charNum);
     void OnTickReceived(int playerNum, const TickC2SBody& body, const sockaddr_in& from);
+    void BroadcastTick(SOCKET udpSock);
 
 private:
     ClientSession*   m_sessions[2];
@@ -28,4 +29,7 @@ private:
     uint16_t         m_lastSeq[2];
     bool             m_seqInitialized[2];
     CRITICAL_SECTION m_stateLock;
+
+    uint16_t         m_sendSeq;
+    bool             m_sendStarted;
 };

@@ -22,6 +22,8 @@ void SessionManager::Init() {
     m_seqInitialized[0] = m_seqInitialized[1] = false;
     memset(m_lastSeq, 0, sizeof(m_lastSeq));
     memset(m_latest,  0, sizeof(m_latest));
+    m_sendSeq     = 0;
+    m_sendStarted = false;
     InitializeCriticalSection(&m_stateLock);
     InitializeCriticalSection(&m_sessionLock);
     m_initialized = true;
@@ -191,4 +193,57 @@ void SessionManager::OnTickReceived(int playerNum, const TickC2SBody& body, cons
 
     if (firstPacket && isNew)
         printf("[UdpRecvLoop] Player %d 첫 틱 수신 (seq=%u)\n", playerNum, (unsigned)body.seq);
+}
+
+void SessionManager::BroadcastTick(SOCKET udpSock) {
+    // m_stateLock: m_latest 복사
+    PlayerState states[2];
+    EnterCriticalSection(&m_stateLock);
+    memcpy(states, m_latest, sizeof(states));
+    LeaveCriticalSection(&m_stateLock);
+
+    // m_sessionLock: matchStarted + UDP 주소 복사
+    bool matchStarted = false;
+    sockaddr_in addrs[2]{};
+    bool hasAddr[2]{};
+    EnterCriticalSection(&m_sessionLock);
+    matchStarted = m_matchStarted;
+    for (int i = 0; i < 2; i++) {
+        if (m_sessions[i] && m_sessions[i]->HasUdpAddr()) {
+            addrs[i]   = m_sessions[i]->GetUdpAddr();
+            hasAddr[i] = true;
+        }
+    }
+    LeaveCriticalSection(&m_sessionLock);
+
+    if (!matchStarted) return;
+
+    if (!m_sendStarted) {
+        m_sendStarted = true;
+        printf("[TickSendLoop] 브로드캐스트 시작\n");
+    }
+
+    TickS2CBody body{};
+    body.seq      = m_sendSeq++;
+    body.p[0]     = states[0];
+    body.p[1]     = states[1];
+    body.hp[0]    = 0;
+    body.hp[1]    = 0;
+    body.timeLeft = 0;
+    body.Hton();
+
+    char buf[sizeof(PacketHeader) + sizeof(TickS2CBody)];
+    uint16_t netSize = htons((uint16_t)sizeof(TickS2CBody));
+    memcpy(buf, &netSize, 2);
+    buf[2] = static_cast<char>(PKT_TICK_S2C);
+    memcpy(buf + sizeof(PacketHeader), &body, sizeof(TickS2CBody));
+
+    for (int i = 0; i < 2; i++) {
+        if (!hasAddr[i]) continue;
+        if (sendto(udpSock, buf, (int)sizeof(buf), 0,
+                   reinterpret_cast<const sockaddr*>(&addrs[i]),
+                   sizeof(addrs[i])) == SOCKET_ERROR) {
+            printf("[TickSendLoop] Player %d sendto 실패: %d\n", i, WSAGetLastError());
+        }
+    }
 }
