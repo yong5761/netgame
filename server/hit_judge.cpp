@@ -1,5 +1,5 @@
 #include "hit_judge.h"
-#include"session_manager.h"
+#include "session_manager.h"
 #include <cstdio>
 #include <stdlib.h>
 #include <string.h>
@@ -8,10 +8,28 @@ void HitJudge::HandleReport(int attackerNum, int defenderNum) {
     printf("[HitJudge] HandleReport 호출\n");
 
     m_valid = false;
-
-    if (!m_ready)
-        return;
     m_ready = false;
+
+    if (g_sessionMgr == nullptr)
+        return;
+
+    if (attackerNum < 0 || attackerNum >= 2 ||
+        defenderNum < 0 || defenderNum >= 2)
+        return;
+
+    if (attackerNum == defenderNum)
+        return;
+
+    if (!g_sessionMgr->GetPendingReport(m_report))
+        return;
+
+    if (!g_sessionMgr->GetPendingState(0, m_playerStates[0]))
+        return;
+
+    if (!g_sessionMgr->GetPendingState(1, m_playerStates[1]))
+        return;
+
+    m_senderNum = g_sessionMgr->GetPendingSender();
 
     if (m_report.attacker != attackerNum ||
         m_report.victim != defenderNum)
