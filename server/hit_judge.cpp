@@ -43,6 +43,11 @@ void HitJudge::Verify() {
     printf("[HitJudge] Verify 호출\n");
     m_valid = false;
 
+    if (!m_ready)
+        return;
+
+    m_ready = false;
+
     if (m_minDist <= 0.f)
         return;
 
