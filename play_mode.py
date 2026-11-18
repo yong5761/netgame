@@ -1,5 +1,6 @@
 from pico2d import *
 import game_framework
+import net_client
 from character import Character
 import game_world
 import intro_mode
@@ -12,6 +13,7 @@ from interaction import HitBoxManager
 import queue
 import packet
 import net_state
+from net_state import send_queue
 from round_sync import *
 from remote_controller import RemoteController
 TICK_INTERVAL = 0.017# 1/frame
@@ -169,7 +171,7 @@ def update():
         if common.game_mode == 'Single Player':
             common.ai_player.update()
             common.ai_player.run()
-        if common.c1.hp <= 0 or common.c2.hp<=0:
+        if common.c1.hp <= 0 or common.c2.hp <= 0:
             if not round_over:
                 round_over = True
                 round_over_timer = ROUND_OVER_DELAY
@@ -197,14 +199,16 @@ def update():
                         reset_round()
 
         if common.hitbox_manager:
-            common.hitbox_manager.detect_body_overlaps()
-            common.hitbox_manager.detect_is_opponent_attacking()
-            common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])
-            common.hitbox_manager.detect_attack_hits()
+            common.hitbox_manager.detect_body_overlaps()# 신체 겹침 해결
+            common.hitbox_manager.detect_is_opponent_attacking()# 공격판정 확인
+            common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])#  마주보게 하고
+            common.hitbox_manager.detect_attack_hits()# 양측 피격판정
     elif common.game_mode == 'Network' and net_state.is_connected:
         if common.hitbox_manager:
             common.hitbox_manager.detect_is_opponent_attacking()
-            common.hitbox_manager.detect_online_hit([common.c1, common.c2], net_state.my_player_num)
+            common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)
+            common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)
+            # detect_attack_hits은 로컬 전용 함수, 리턴이 없다.
 
     # 네트워크 입력 전송
     if common.game_mode == 'Network' and net_state.is_connected:
@@ -218,6 +222,8 @@ def draw():
     update_canvas()
 
 def finish():
+    net_state.send_queue.put((packet.PKT_LEAVE, None))
+    net_client.NetClient.disconnect()
     game_world.clear()
     pass
 
@@ -259,6 +265,7 @@ def send_tick_packet():
         int(my_character.frame),
         flag
     )
+    net_state.send_queue.put((packet.PKT_TICK_C2S,body))
     if common.net_client_obj.send_tick(body):
         net_state.send_seq = (net_state.send_seq + 1) & 0xFFFF
 # 패킷 수신
@@ -289,7 +296,7 @@ def recv_tick_packet():
                 remote_data = data["p2"]
             else:
                 remote_data = data["p1"]
-            net_state.remote_player.apply_tick(remote_data)
+            common.ai_player.apply_tick(remote_data)
 
         elif packet_type == packet.PKT_HIT_RESULT and len(body) >= packet.HIT_RESULT_SIZE:
             data = packet.unpack_hit_result(body)
