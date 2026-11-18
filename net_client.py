@@ -25,16 +25,16 @@ class NetClient:
         net_state.server_ip = ip
         net_state.server_port = port
         # TCP 소켓 생성 및 연결
-        self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # TIME-WAIT상태에서 즉시 연결 가능
-        self.tcp_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # Nagle알고리즘 비활성화
-        self.tcp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1) # 연결 상태 확인
-        self.tcp_sock.settimeout(5.0)
+        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # TIME-WAIT상태에서 즉시 연결 가능
+        self.tcp_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # Nagle알고리즘 비활성화
+        self.tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1) # 연결 상태 확인
+        self.tcp_socket.settimeout(5.0)
         try:
-         self.tcp_sock.connect((ip, port))
+         self.tcp_socket.connect((ip, port))
         except socket.timeout:
          print("서버 연결 시간 초과");
-        self.tcp_sock.settimeout(None)
+        self.tcp_socket.settimeout(None)
 
         # UDP 소켓 생성 및 수신용 포트 할당
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -79,14 +79,14 @@ class NetClient:
      self.udp_socket = None
 
  def send_packet(self, pkt_type, body): # TCP
-  if not net_state.is_connected or self.tcp_sock is None:
+  if not net_state.is_connected or self.tcp_socket is None:
    return False
   try:
    # 헤더 생성 (본문 크기 + 패킷 종류)
    header = packet.pack_header(len(body), pkt_type)
    send_data = header + body
 
-   self.tcp_sock.sendall(send_data)# TCP 전송
+   self.tcp_socket.sendall(send_data)# TCP 전송
    return True
   except OSError as e:
    print(f"TCP 전송 오류: {e}")
@@ -115,7 +115,7 @@ class NetClient:
  def _recv_exact(self, size):# 헤더 받기
      data = bytearray()
      while len(data) < size:
-         chunk = self.tcp_sock.recv(size - len(data))
+         chunk = self.tcp_socket.recv(size - len(data))
          if not chunk:
              return None
          data.extend(chunk)
