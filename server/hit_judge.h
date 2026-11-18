@@ -23,7 +23,6 @@ private:
 
     HitReportBody m_report{};
     PlayerState m_playerStates[2]{};
-    HitResultBody m_result{};
 
     int m_senderNum{ -1 };
     DWORD m_now{};
