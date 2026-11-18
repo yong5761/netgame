@@ -338,3 +338,53 @@ void SessionManager::SendHitResult(int playerNum, const HitResultBody& body) {
                          static_cast<uint16_t>(sizeof(toSend)));
     }
 }
+
+void SessionManager::OnHitVerified(int attackerNum, int defenderNum,
+                                    uint8_t damage, bool guarded) {
+    if (attackerNum < 0 || attackerNum >= 2) return;
+    if (defenderNum < 0 || defenderNum >= 2) return;
+    if (attackerNum == defenderNum) return;
+
+    // m_sessionLock: m_matchStarted 복사 후 즉시 해제
+    bool matchStarted = false;
+    EnterCriticalSection(&m_sessionLock);
+    matchStarted = m_matchStarted;
+    LeaveCriticalSection(&m_sessionLock);
+    if (!matchStarted) return;
+
+    // m_stateLock: 체력 차감 및 결과값 계산 후 즉시 해제
+    uint8_t  finalDamage = 0;
+    uint8_t  remainHp    = 0;
+    int16_t  attackerX   = 0;
+    int16_t  victimX     = 0;
+
+    EnterCriticalSection(&m_stateLock);
+    if (m_hp[defenderNum] == 0) {
+        LeaveCriticalSection(&m_stateLock);
+        return;
+    }
+    finalDamage = (damage > m_hp[defenderNum]) ? m_hp[defenderNum] : damage;
+    m_hp[defenderNum] -= finalDamage;
+    remainHp   = m_hp[defenderNum];
+    attackerX  = m_latest[attackerNum].x;
+    victimX    = m_latest[defenderNum].x;
+    LeaveCriticalSection(&m_stateLock);
+
+    // 두 락 모두 해제된 상태에서 패킷 생성 및 송신
+    int16_t knockMag = guarded ? KNOCK_GUARD : KNOCK_HIT;
+    int16_t knockX   = (attackerX > victimX)
+                           ? static_cast<int16_t>(-knockMag)
+                           : knockMag;
+
+    printf("[OnHitVerified] P%d → P%d 데미지 %d, 남은 체력 %d\n",
+           attackerNum, defenderNum, (int)finalDamage, (int)remainHp);
+
+    HitResultBody result{};
+    result.victim   = static_cast<uint8_t>(defenderNum);
+    result.attacker = static_cast<uint8_t>(attackerNum);
+    result.damage   = finalDamage;
+    result.hp       = remainHp;
+    result.knockX   = knockX;
+
+    SendHitResult(-1, result);
+}

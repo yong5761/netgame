@@ -8,7 +8,9 @@
 
 class SessionManager {
 public:
-    static const uint8_t MAX_HP = 100;
+    static const uint8_t  MAX_HP     = 100;
+    static const int16_t  KNOCK_GUARD = 12;
+    static const int16_t  KNOCK_HIT   = 40;
     void Init();
     void Destroy();
 
@@ -25,6 +27,8 @@ public:
     bool GetPendingState(int playerNum, PlayerState& out);
     int  GetPendingSender();
     void SendHitResult(int playerNum, const HitResultBody& body);
+    void OnHitVerified(int attackerNum, int defenderNum,
+                       uint8_t damage, bool guarded);
 
 private:
     ClientSession*   m_sessions[2];
