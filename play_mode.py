@@ -207,7 +207,6 @@ def update():
         if common.hitbox_manager:
             common.hitbox_manager.detect_is_opponent_attacking()
             common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)
-            common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)
             # detect_attack_hits은 로컬 전용 함수, 리턴이 없다.
 
     # 네트워크 입력 전송
@@ -291,6 +290,7 @@ def recv_tick_packet():
             net_state.last_recv_seq = data["seq"]
             # 라운드 공통 정보
             apply_round_sync()
+
             # 상대 플레이어 정보
             if net_state.my_player_num == 0:
                 remote_data = data["p2"]
@@ -304,5 +304,6 @@ def recv_tick_packet():
             # 피격 결과 반영
         elif packet_type == packet.PKT_ROUND_END and len(body) >= packet.ROUND_END_SIZE:
             data = packet.unpack_round_end(body)
-            # 경기 종료 반영 A가 구현한
+            # A가 구현한 경기 종료 반영 함수
+            handle_round_end(data)
             pass
