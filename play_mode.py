@@ -13,7 +13,6 @@ from interaction import HitBoxManager
 import queue
 import packet
 import net_state
-from net_state import send_queue
 from round_sync import *
 from remote_controller import RemoteController
 TICK_INTERVAL = 0.017# 1/frame
@@ -50,7 +49,6 @@ def reset_round():
     if common.c1.win_count >=2 or common.c2.win_count >=2:
         game_framework.change_mode(intro_mode)
 
-    pass
 def handle_events():
     event_list = get_events()
     global running, pressed_keys
@@ -204,6 +202,8 @@ def update():
             common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])#  마주보게 하고
             common.hitbox_manager.detect_attack_hits()# 양측 피격판정
     elif common.game_mode == 'Network' and net_state.is_connected:
+
+
         if common.hitbox_manager:
             common.hitbox_manager.detect_is_opponent_attacking()
             common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)
@@ -306,4 +306,4 @@ def recv_tick_packet():
             data = packet.unpack_round_end(body)
             # A가 구현한 경기 종료 반영 함수
             handle_round_end(data)
-            pass
+            reset_round()
