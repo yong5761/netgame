@@ -65,8 +65,6 @@ void HitJudge::Verify() {
 
     if (m_report.guard > 1)
         return;
-    if (m_report.guard == 1)
-        return;
 
     if (m_report.damage != 5 && m_report.damage != 10)
         return;
@@ -87,6 +85,8 @@ void HitJudge::Verify() {
 
     m_lastHitTick[victim] = m_now;
     m_hasLastHit[victim] = true;
+
+    SendResult(victim);
 }
 
 void HitJudge::CheckDistance() {
