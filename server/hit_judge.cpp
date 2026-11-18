@@ -79,6 +79,14 @@ void HitJudge::Verify() {
         return;
 
     CheckCooldown();
+    
+    if (!m_valid)
+        return;
+
+    int victim = m_report.victim;
+
+    m_lastHitTick[victim] = m_now;
+    m_hasLastHit[victim] = true;
 }
 
 void HitJudge::CheckDistance() {
