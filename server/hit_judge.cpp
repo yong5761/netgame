@@ -122,14 +122,19 @@ void HitJudge::CheckCooldown() {
 void HitJudge::SendResult(int defenderNum) {
     printf("[HitJudge] SendResult 호출\n");
 
-    if (g_sessionMgr == nullptr)
+    if (g_sessionMgr == nullptr||!m_valid)
         return;
 
     if (defenderNum < 0 || defenderNum >= 2)
         return;
 
-    if (m_result.victim != defenderNum)
+    if (defenderNum!=m_report.victim)
         return;
 
-    g_sessionMgr->SendHitResult(-1, m_result);
+    g_sessionMgr->OnHitVerified(
+        m_report.attacker,
+        defenderNum,
+        m_report.damage,
+        m_report.guard
+    );
 }
