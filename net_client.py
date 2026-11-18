@@ -171,19 +171,18 @@ class NetClient:
              print(f"UDP 수신 오류: {e}")
          break
  def _send_loop(self):# 발신
-  while self.running:
+  while self.running or not net_state.send_queue.empty():
      try:
          # 송신 큐에서 데이터 가져오기
          pkt_type, body = net_state.send_queue.get(timeout=0.1)
          # TCP 전송
-         if pkt_type >= packet.PKT_JOIN or pkt_type <= packet.PKT_LEAVE:
+         if packet.PKT_JOIN <= pkt_type <= packet.PKT_LEAVE:
             self.send_packet(pkt_type, body)
          # UDP 전송
          elif pkt_type == packet.PKT_TICK_C2S:
             self.send_tick(body)
          else:
              print(f"잘못된 패킷 타입 번호: {pkt_type}")
-     except queue.Empty:
-         continue
+
      except Exception as e:
          print(f"송신 스레드 오류: {e}")
