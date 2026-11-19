@@ -13,6 +13,10 @@ public:
     void UdpRecvLoop();
     void Shutdown();
 
+    static DWORD WINAPI UdpThreadProc(LPVOID param);
+    static DWORD WINAPI TickSendThreadProc(LPVOID param);
+    void TickSendLoop();
+
 private:
     SOCKET          m_listenSock;
     SOCKET          m_udpSock;

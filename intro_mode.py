@@ -1,6 +1,7 @@
 import game_framework
 import character_select_mode
 import common
+import net_state
 from pico2d import *
 
 STATE_MENU     = 'menu'
@@ -85,6 +86,7 @@ def _attempt_connect():
     nc = NetClient()
     if nc.connect(ip, 9000):
         common.net_client_obj = nc
+        net_state.network     = nc
         common.game_mode      = 'Network'
         running = False
     else:

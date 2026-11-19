@@ -6,7 +6,8 @@
 #include <cstdint>
 
 ClientSession::ClientSession(SOCKET sock, sockaddr_in addr, int playerNum, SessionManager* mgr)
-    : m_sock(sock), m_addr(addr), m_playerNum(playerNum), m_alive(true), m_charNum(-1), m_mgr(mgr)
+    : m_sock(sock), m_addr(addr), m_playerNum(playerNum), m_alive(true), m_charNum(-1),
+      m_udpAddr{}, m_udpAddrKnown(false), m_mgr(mgr)
 {
 }
 
@@ -78,6 +79,14 @@ void ClientSession::RecvLoop() {
                         printf("[Session %d] PKT_SELECT charNum=%u\n", m_playerNum, charNum);
                         m_mgr->OnCharSelected(m_playerNum, charNum);
                     }
+                }
+            } else if (pktType == static_cast<uint8_t>(PKT_HIT_REPORT)) {
+                if (bodySize == static_cast<uint16_t>(sizeof(HitReportBody))) {
+                    HitReportBody body;
+                    memcpy(&body, accumBuf + 3, sizeof(HitReportBody));
+                    m_mgr->OnHitReport(m_playerNum, body);
+                } else {
+                    printf("[Session %d] PKT_HIT_REPORT 크기 불일치: %u\n", m_playerNum, bodySize);
                 }
             } else {
                 printf("[Session %d] pkt type=%u body=%u bytes\n",

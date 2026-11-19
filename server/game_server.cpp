@@ -1,12 +1,25 @@
 #include "game_server.h"
 #include "client_session.h"
 #include <cstdio>
+#include <cstring>
 
 #pragma comment(lib, "ws2_32.lib")
 
 static DWORD WINAPI AcceptThreadProc(LPVOID param) {
     GameServer* srv = static_cast<GameServer*>(param);
     srv->AcceptLoop();
+    return 0;
+}
+
+DWORD WINAPI GameServer::UdpThreadProc(LPVOID param) {
+    GameServer* srv = static_cast<GameServer*>(param);
+    srv->UdpRecvLoop();
+    return 0;
+}
+
+DWORD WINAPI GameServer::TickSendThreadProc(LPVOID param) {
+    GameServer* srv = static_cast<GameServer*>(param);
+    srv->TickSendLoop();
     return 0;
 }
 
@@ -71,6 +84,7 @@ bool GameServer::Init(unsigned short port)
     }
 
     m_sessionMgr.Init();
+    g_sessionMgr = &m_sessionMgr;
     printf("[Init] 서버 준비 완료 — TCP/UDP 포트 %u\n", m_port);
     return true;
 }
@@ -82,12 +96,36 @@ void GameServer::Run()
         printf("[Run] AcceptThread 생성 실패: %d\n", GetLastError());
         return;
     }
+    HANDLE hUdp = CreateThread(nullptr, 0, UdpThreadProc, this, 0, nullptr);
+    if (!hUdp) {
+        printf("[Run] UdpThread 생성 실패: %d\n", GetLastError());
+        m_stopFlag = true;
+        Shutdown();
+        WaitForSingleObject(hAccept, 3000);
+        CloseHandle(hAccept);
+        return;
+    }
+    HANDLE hTickSend = CreateThread(nullptr, 0, TickSendThreadProc, this, 0, nullptr);
+    if (!hTickSend) {
+        printf("[Run] TickSendThread 생성 실패: %d\n", GetLastError());
+        m_stopFlag = true;
+        Shutdown();
+        WaitForSingleObject(hAccept, 3000);
+        WaitForSingleObject(hUdp, 3000);
+        CloseHandle(hAccept);
+        CloseHandle(hUdp);
+        return;
+    }
     printf("서버 실행 중. 종료하려면 Enter 를 누르세요...\n");
     getchar();
     m_stopFlag = true;
     Shutdown();
     WaitForSingleObject(hAccept, 3000);
+    WaitForSingleObject(hUdp, 3000);
+    WaitForSingleObject(hTickSend, 3000);
     CloseHandle(hAccept);
+    CloseHandle(hUdp);
+    CloseHandle(hTickSend);
 }
 
 void GameServer::AcceptLoop()
@@ -128,14 +166,51 @@ void GameServer::AcceptLoop()
     printf("[AcceptLoop] 종료\n");
 }
 
+void GameServer::TickSendLoop()
+{
+    while (!m_stopFlag) {
+        Sleep(50);
+        m_sessionMgr.BroadcastTick(m_udpSock);
+    }
+    printf("[TickSendLoop] 종료\n");
+}
+
 void GameServer::UdpRecvLoop()
 {
-    // UDP 수신 루프 — 추후 구현
+    char buf[1024];
+    sockaddr_in from{};
+    int fromLen = sizeof(from);
+    while (!m_stopFlag) {
+        fromLen = sizeof(from);
+        int received = recvfrom(m_udpSock, buf, sizeof(buf), 0,
+                                reinterpret_cast<sockaddr*>(&from), &fromLen);
+        if (received == SOCKET_ERROR) {
+            if (m_stopFlag) break;
+            printf("[UdpRecvLoop] recvfrom 오류: %d\n", WSAGetLastError());
+            continue;
+        }
+        if (received < (int)sizeof(PacketHeader)) continue;
+        PacketHeader hdr;
+        memcpy(&hdr, buf, sizeof(PacketHeader));
+        uint16_t size = ntohs(hdr.size);
+        uint8_t  type = hdr.type;
+        if (type != PKT_TICK_C2S) continue;
+        if (size != (uint16_t)sizeof(TickC2SBody)) continue;
+        if (received < (int)(sizeof(PacketHeader) + size)) continue;
+        TickC2SBody body;
+        memcpy(&body, buf + sizeof(PacketHeader), sizeof(TickC2SBody));
+        body.Ntoh();
+        int playerNum = static_cast<int>(body.player);
+        if (playerNum < 0 || playerNum >= 2) continue;
+        m_sessionMgr.OnTickReceived(playerNum, body, from);
+    }
+    printf("[UdpRecvLoop] 종료\n");
 }
 
 void GameServer::Shutdown()
 {
     printf("[Shutdown] 서버 종료 중...\n");
+    g_sessionMgr = nullptr;
     m_sessionMgr.Destroy();
     if (m_listenSock != INVALID_SOCKET) {
         closesocket(m_listenSock);

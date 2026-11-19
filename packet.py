@@ -274,5 +274,8 @@ def unpack_tick_s2c(body):
             "frame": data[11], "flag": data[12],
         },
         "p1_hp": data[13], "p2_hp": data[14],
+        },
+        "p1_hp": data[13],
+        "p2_hp": data[14],
         "remaining_time": data[15]
     }
