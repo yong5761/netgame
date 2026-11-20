@@ -228,6 +228,7 @@ def update():
 
         if common.hitbox_manager:
             common.hitbox_manager.detect_is_opponent_attacking()
+            common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])# 내 캐릭터의 방향만 구하기 함수는 아직 미구현.
             common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)
             # detect_attack_hits은 로컬 전용 함수, 리턴이 없다.
 
@@ -245,7 +246,6 @@ def draw():
 def finish():
     if common.game_mode == 'Network' and net_state.is_connected:
         net_state.send_queue.put((packet.PKT_LEAVE, None))
-        net_client_obj.NetClient.disconnect()
     game_world.clear()
     pass
 
@@ -253,8 +253,13 @@ def finish():
 # ----------------------------------------------------------------
 def get_key_mask():
     keys = 0x00
-    for key in pressed_keys:
-        keys |= packet.KEY_TO_MASK.get(key, 0)
+    if 1 - net_state.my_player_num:
+        for key in pressed_keys:
+            keys |= packet.KEY_TO_MASK_P1.get(key, 0)
+    else:
+        for key in pressed_keys:
+            keys |= packet.KEY_TO_MASK_P2.get(key, 0)
+
     return keys
 def wait_round_start():
     # ROUND_START 처리 [A]
@@ -276,6 +281,11 @@ def send_tick_packet():
     else:
         flag = common.c2.get_flag()
     seq = net_state.send_seq
+
+    frame = max(0, min(255, int(my_character.frame)))
+
+    print(f"state = ", my_character.get_state_id())
+
     body = packet.pack_tick_c2s(
         net_state.send_seq,
         net_state.my_player_num,
@@ -284,7 +294,7 @@ def send_tick_packet():
         int(my_character.yPos),
         my_character.face_dir,
         my_character.get_state_id(),
-        int(my_character.frame),
+        frame,
         flag
     )
     net_state.send_queue.put((packet.PKT_TICK_C2S,body))

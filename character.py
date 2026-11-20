@@ -226,9 +226,10 @@ class MoveJump:
             self.character.state_machine.handle_state_event(('GUARD', None))
             return
         if self.character.dir == 1:
-            self.character.frame += self.character.face_dir * FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
+            self.character.frame += FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
         else:
-            self.character.frame -= self.character.face_dir * FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
+            self.character.frame -= FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
+        self.character.frame = max(0.0, min(self.character.frame, self.character.image.jump_move_frames - 1))
 
         self.character.vy += GRAVITY_PPS2 * game_framework.frame_time
         self.character.yPos += self.character.vy * game_framework.frame_time
@@ -1162,8 +1163,11 @@ class Character:
             hitbox.update((sx - w + offset_width, self.yPos - h, CHARACTER_WIDTH_SCALE * w - offset_width, CHARACTER_HEIGHT_SCALE*h))
 
     def get_state_id(self):
-        current_state = self.state_machine.cur_state
-        return self.state_map.get(current_state, 0)
+        for state_id, state_obj in self.state_map.items():
+            if self.state_machine.cur_state == state_obj:
+                return state_id
+
+        return packet.STATE_IDLE
 
     def get_flag(self):
         flag = 0

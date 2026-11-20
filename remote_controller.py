@@ -23,15 +23,13 @@ class RemoteController: # AIController 자리에 들어간다
   ch.yPos = data["y"]
   ch.face_dir = data["face"]
   # FSM 상태 동기화
-
   state_id = data["state"]
-
-  if state_id is not None:
-   last_state_id = ch.get_state_id()
-
-   if last_state_id != state_id:
-    ch.state_machine.cur_state.exit(None)
-    ch.state_machine.cur_state = self.state_map.get(state_id)
+  # 프레임 수정, 상태 수정
+  new_state = self.state_map.get(state_id)
+  if new_state is not None:
+   if ch.state_machine.cur_state != state_id:
+    ch.state_machine.cur_state.exit(('NETWORK', None))
+    ch.state_machine.cur_state = new_state
     ch.state_machine.cur_state.enter(None)
 
   ch.frame = data["frame"]
