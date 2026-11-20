@@ -83,6 +83,16 @@ def handle_events():
                         c.handle_event(event)
         elif event.type == SDL_KEYUP:
             pressed_keys.discard(event.key)
+
+            # 멀티인 경우
+            if common.game_mode == 'Network' and net_state.is_connected:
+                my_character = common.characters[net_state.my_player_num]
+                my_character.handle_event(event)
+
+            # 싱글 및 로컬 2인 플레이
+            else:
+                for c in common.characters:
+                    c.handle_event(event)
 # 초기 설정
 def init():
     common.palace_map = PalaceMap()
@@ -99,6 +109,9 @@ def init():
             common.c1 = Character(KimFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
         elif common.p1_character_num == 2:
             common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        if common.stage_num == 0:
+            common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+            common.ai_player = AIController(common.c2, common.c1)
 
     # p2의 캐릭터 생성/멀티용 캐릭터 생성
     if common.game_mode == 'Two Player':
@@ -115,12 +128,19 @@ def init():
         elif common.p2_character_num == 2:
             common.c2 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
 
-    if common.stage_num == 0 and common.game_mode == 'Single Player':
-        common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
-        common.ai_player = AIController(common.c2, common.c1)
-
     if common.game_mode == 'Network' and net_state.is_connected:
-        # select모드에서 캐릭터 생성됨
+        if common.p1_character_num == 0:
+            common.c1 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        elif common.p1_character_num == 1:
+            common.c1 = Character(KimFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        elif common.p1_character_num == 2:
+            common.c1 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
+        if common.p2_character_num == 0:
+            common.c2 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+        elif common.p2_character_num == 1:
+            common.c2 = Character(KimFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
+        elif common.p2_character_num == 2:
+            common.c2 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
         if net_state.my_player_num == 0:
             common.ai_player = RemoteController(common.c2)
         else:
@@ -159,6 +179,7 @@ def update():
         recv_tick_packet()
     # 기존 게임 업데이트
     game_world.update()
+
 
     common.c1, common.c2 = common.characters
     # 히트박스
@@ -202,7 +223,8 @@ def update():
             common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])#  마주보게 하고
             common.hitbox_manager.detect_attack_hits()# 양측 피격판정
     elif common.game_mode == 'Network' and net_state.is_connected:
-
+        # 서버에서 받은 네트워크 정보 업데이트
+        common.ai_player.update()
 
         if common.hitbox_manager:
             common.hitbox_manager.detect_is_opponent_attacking()
@@ -221,8 +243,9 @@ def draw():
     update_canvas()
 
 def finish():
-    net_state.send_queue.put((packet.PKT_LEAVE, None))
-    net_client.NetClient.disconnect()
+    if common.game_mode == 'Network' and net_state.is_connected:
+        net_state.send_queue.put((packet.PKT_LEAVE, None))
+        net_client_obj.NetClient.disconnect()
     game_world.clear()
     pass
 
@@ -254,7 +277,7 @@ def send_tick_packet():
         flag = common.c2.get_flag()
     seq = net_state.send_seq
     body = packet.pack_tick_c2s(
-        seq,
+        net_state.send_seq,
         net_state.my_player_num,
         keys,
         int(my_character.xPos),
@@ -265,8 +288,8 @@ def send_tick_packet():
         flag
     )
     net_state.send_queue.put((packet.PKT_TICK_C2S,body))
-    if common.net_client_obj.send_tick(body):
-        net_state.send_seq = (net_state.send_seq + 1) & 0xFFFF
+
+    net_state.send_seq = (net_state.send_seq + 1) & 0xFFFF
 # 패킷 수신
 def recv_tick_packet():
     if not net_state.is_connected:
@@ -282,14 +305,8 @@ def recv_tick_packet():
         if packet_type == packet.PKT_TICK_S2C and len(body) >= packet.TICK_S2C_SIZE:
 
             data = packet.unpack_tick_s2c(body)
-
-            if net_state.last_recv_seq >= 0:
-                diff = (data["seq"] - net_state.last_recv_seq) & 0xFFFF
-                if 0 < diff < 0x8000:
-                    continue
-            net_state.last_recv_seq = data["seq"]
             # 라운드 공통 정보
-            apply_round_sync()
+            apply_round_sync(data)
 
             # 상대 플레이어 정보
             if net_state.my_player_num == 0:

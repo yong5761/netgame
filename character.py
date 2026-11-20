@@ -850,6 +850,12 @@ class Character:
         self.keep_sit_down_last_frame = False
         self.time_out_and_down = lambda e: (e[0] == 'TIME_OUT') and self.down_pressed
         self.time_out_and_not_down = lambda e: (e[0] == 'TIME_OUT') and (not self.down_pressed)
+        self.time_out_and_key = lambda e: (e[0] == 'TIME_OUT' and (self.fwd_pressed or self.back_pressed))
+        self.time_out_and_idle = lambda e: (e[0] == 'TIME_OUT'
+                and not self.fwd_pressed
+                and not self.back_pressed
+                and not self.down_pressed
+        )
         self.can_combo = lambda e: (e[0] == 'ENABLE_COMBO') and self.is_enable_combo
 
         self.is_attacking = False
@@ -874,6 +880,25 @@ class Character:
         self.GET_HIT = GetHit(self)
         self.COMBO_ATTACK = ComboAttack(self)
         self.DEAD = Dead(self)
+
+        self.state_map = {
+            self.IDLE: packet.STATE_IDLE,
+            self.WALK: packet.STATE_WALK,
+            self.JUMP: packet.STATE_JUMP,
+            self.MOVE_JUMP: packet.STATE_MOVE_JUMP,
+            self.RUN: packet.STATE_RUN,
+            self.RUN_JUMP: packet.STATE_RUN_JUMP,
+            self.BACK_DASH: packet.STATE_BACK_DASH,
+            self.SIT_DOWN: packet.STATE_SIT_DOWN,
+            self.SIT_UP: packet.STATE_SIT_UP,
+            self.NORMAL_ATTACK: packet.STATE_NORMAL_ATTACK,
+            self.AIR_ATTACK: packet.STATE_AIR_ATTACK,
+            self.SIT_ATTACK: packet.STATE_SIT_ATTACK,
+            self.GUARD: packet.STATE_GUARD,
+            self.GET_HIT: packet.STATE_GET_HIT,
+            self.COMBO_ATTACK: packet.STATE_COMBO_ATTACK,
+            self.DEAD: packet.STATE_DEAD
+        }
 
         def mk_key_pred(key_const, sdl_type):
             def pred(e):
@@ -979,6 +1004,9 @@ class Character:
                     time_out: self.IDLE,self.down_down:self.SIT_DOWN,self.fwd_down:self.WALK,self.back_down:self.WALK,self.up_down:self.JUMP
                 },
                 self.NORMAL_ATTACK:{
+                    self.time_out_and_down: self.SIT_DOWN,
+                    self.time_out_and_key: self.WALK,
+                    self.time_out_and_idle: self.IDLE,
                     time_out:self.IDLE, self.can_combo: self.COMBO_ATTACK
                 },
                 self.AIR_ATTACK:{
@@ -995,6 +1023,9 @@ class Character:
                     time_out:self.IDLE, hitted:self.GET_HIT,dead:self.DEAD
                 },
                 self.COMBO_ATTACK:{
+                    self.time_out_and_down: self.SIT_DOWN,
+                    self.time_out_and_key: self.WALK,
+                    self.time_out_and_idle: self.IDLE,
                     time_out:self.IDLE, self.can_combo: self.COMBO_ATTACK
                 },
                 self.DEAD:{
@@ -1131,26 +1162,8 @@ class Character:
             hitbox.update((sx - w + offset_width, self.yPos - h, CHARACTER_WIDTH_SCALE * w - offset_width, CHARACTER_HEIGHT_SCALE*h))
 
     def get_state_id(self):
-        state_map = {
-            self.IDLE: packet.STATE_IDLE,
-            self.WALK: packet.STATE_WALK,
-            self.JUMP: packet.STATE_JUMP,
-            self.MOVE_JUMP: packet.STATE_MOVE_JUMP,
-            self.RUN: packet.STATE_RUN,
-            self.RUN_JUMP: packet.STATE_RUN_JUMP,
-            self.BACK_DASH: packet.STATE_BACK_DASH,
-            self.SIT_DOWN: packet.STATE_SIT_DOWN,
-            self.SIT_UP: packet.STATE_SIT_UP,
-            self.NORMAL_ATTACK: packet.STATE_NORMAL_ATTACK,
-            self.AIR_ATTACK: packet.STATE_AIR_ATTACK,
-            self.SIT_ATTACK: packet.STATE_SIT_ATTACK,
-            self.GUARD: packet.STATE_GUARD,
-            self.GET_HIT: packet.STATE_GET_HIT,
-            self.COMBO_ATTACK: packet.STATE_COMBO_ATTACK,
-            self.DEAD: packet.STATE_DEAD
-        }
         current_state = self.state_machine.cur_state
-        return state_map.get(current_state, 0)
+        return self.state_map.get(current_state, 0)
 
     def get_flag(self):
         flag = 0
