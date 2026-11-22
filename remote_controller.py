@@ -2,6 +2,7 @@ from operator import truediv
 from types import SimpleNamespace
 from pico2d import *
 from packet import *
+import common
 
 class RemoteController: # AIController 자리에 들어간다
  def __init__(self, character):
@@ -19,32 +20,63 @@ class RemoteController: # AIController 자리에 들어간다
   ch = self.ch
   data = self.packet_data
 
+  # FSM 상태 동기화
+  state_id = data["state"]
+  new_state = self.state_map.get(state_id)
+  flag = data["flag"]
+
+  if new_state is not None and self.ch.state_machine.cur_state != new_state:
+    e = None
+    # 공격 수신시 이걸로 공격 종류 구분
+    if bool(flag & KEY_LP):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lp']))
+    elif bool(flag & KEY_RP):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rp']))
+    elif bool(flag & KEY_RK):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rk']))
+    elif bool(flag & KEY_LK):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lk']))
+    else:
+     e = ('NETWORK', None)
+    self.ch.state_machine.cur_state.exit(None)
+    self.ch.state_machine.cur_state = new_state
+    self.ch.state_machine.cur_state.enter(e)
   # 상태 동기화
   ch.xPos = data["x"]
   ch.yPos = data["y"]
   ch.face_dir = data["face"]
-  # FSM 상태 동기화
-  state_id = data["state"]
-  # 프레임 수정, 상태 수정
-  new_state = self.state_map.get(state_id)
-  # 공격 구분
+  # 공격 구분, 프레임 수정
   ch.frame = data["frame"]
-  flag = data["flag"]
+ def apply_hit(self, data):
+  victim_num = data['victim']
+  attacker_num = data['attacker']
+  data['damage']
+  data['hp']
+  data['knock_x']
+  victim_num = data["victim"]
+  attacker_num = data["attacker"]
 
+  # 플레이어 번호 검사
+  if victim_num not in (0, 1) or attacker_num not in (0, 1):
+   return
 
- def attack_event(self, new_state, flag):
-  if new_state is not None and self.ch.state_machine.cur_state != new_state:
-   e = None
-   # 공격 수신시 이걸로 공격 종류 구분
-   if bool(flag & KEY_LP):
-    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lp']))
-   elif bool(flag & KEY_RP):
-    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rp']))
-   elif bool(flag & KEY_RK):
-    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rk']))
-   elif bool(flag & KEY_LK):
-    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lk']))
-   self.ch.state_machine.handle_state_event(e)
-   self.ch.state_machine.cur_state.exit(None)
-   self.ch.state_machine.cur_state = new_state
-   self.ch.state_machine.cur_state.enter(e)
+  victim = common.characters[victim_num]
+  attacker = common.characters[attacker_num]
+
+  # 공격 성공 처리
+  attacker.is_succeeded_attack = True
+  attacker.attack_hitbox.reset_rect()
+
+  # 서버에서 계산한 HP 적용
+  victim.hp = data["hp"]
+
+  # 실제 피해가 발생한 경우
+  if data["damage"] > 0:
+   victim.is_hitted = True
+
+   # 서버에서 전달한 넉백 적용
+   victim.xPos += data["knock_x"]
+
+   # 피격 애니메이션 실행
+   victim.state_machine.handle_state_event(('HITTED', None))
+  pass

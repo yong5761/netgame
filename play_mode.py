@@ -46,7 +46,7 @@ def reset_round():
     common.c1.xPos = common.palace_map.w / 2 - 200
     common.c2.xPos = common.palace_map.w / 2 + 300
     common.palace_map.window_left = int(common.palace_map.w / 2 - common.palace_map.cw / 2)
-    if common.c1.win_count >=2 or common.c2.win_count >=2:
+    if common.c1.win_count >=2 or common.c2.win_count >= 2:
         game_framework.change_mode(intro_mode)
 
 def handle_events():
@@ -323,7 +323,7 @@ def recv_tick_packet():
 
         elif packet_type == packet.PKT_HIT_RESULT and len(body) >= packet.HIT_RESULT_SIZE:
             data = packet.unpack_hit_result(body)
-            pass
+            common.ai_player.apply_hit(data)
             # 피격 결과 반영
         elif packet_type == packet.PKT_ROUND_END and len(body) >= packet.ROUND_END_SIZE:
             data = packet.unpack_round_end(body)

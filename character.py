@@ -7,7 +7,7 @@ from character_frame import *
 from character_frame import CHARACTER_WIDTH_SCALE, CHARACTER_HEIGHT_SCALE
 import common
 import packet
-
+from net_state import is_connected
 common.hitbox_manager = HitBoxManager()
 
 PIXEL_PER_METER = 10.0/0.15 #10 픽셀당 30cm로 설정
@@ -454,10 +454,18 @@ class NormalAttack:
     def enter(self, e):
         self.character.frame = 0.0
         self.character.is_attacking = True
-        for k in ('rp', 'lp', 'rk', 'lk'):
-            if e[1].key == self.character.keymap.get(k):
-                self.attack_key = k
-                break
+        # 네트워크에서 전달한 공격 키 이름 처리
+        self.attack_key = None
+
+        if e is not None and len(e) > 1:
+            if isinstance(e[1], str):
+                self.attack_key = e[1]
+
+            elif e[1] is not None and hasattr(e[1], 'key'):
+                for k in ('rp', 'lp', 'rk', 'lk'):
+                    if e[1].key == self.character.keymap.get(k):
+                        self.attack_key = k
+                        break
         self.frames = self.character.image.normal_attacks.get(self.attack_key, {}).get('frames', [])
         self.frame_count = len(self.frames)
     def exit(self, e):
@@ -484,7 +492,9 @@ class NormalAttack:
 
     def draw(self):
         sx = self.character.xPos - common.palace_map.window_left - 50 - 1
-        self.character.image.draw_by_frame_num(self.frames[int(self.character.frame)], sx,
+        print(self.character.frame, self.frame_count, )
+        print(max(0, min(int(self.character.frame), self.frame_count - 1)))
+        self.character.image.draw_by_frame_num(self.frames[max(0, min(int(self.character.frame), len(self.frames) - 1))], sx,
                                                self.character.yPos, self.character.face_dir)
 
 class AirAttack:
@@ -497,23 +507,47 @@ class AirAttack:
     def enter(self, e):
         self.character.frame = 0.0
         self.character.is_attacking = True
-        for k in ('rp', 'lp', 'rk', 'lk'):
-            if e[1].key == self.character.keymap.get(k):
-                self.attack_key = k
-                break
+        # 네트워크에서 전달한 공격 키 이름 처리
+        self.attack_key = None
+
+        if e is not None and len(e) > 1:
+            if isinstance(e[1], str):
+                self.attack_key = e[1]
+
+            elif e[1] is not None and hasattr(e[1], 'key'):
+                for k in ('rp', 'lp', 'rk', 'lk'):
+                    if e[1].key == self.character.keymap.get(k):
+                        self.attack_key = k
+                        break
         if self.character.dir != 0:
             self.frames = self.character.image.move_jump_attacks.get(self.attack_key, {}).get('frames', [])
         else:
             self.frames = self.character.image.jump_attacks.get(self.attack_key, {}).get('frames', [])
         self.frame_count = len(self.frames)
-
+        print(
+            "attack_key:", self.attack_key,
+            "frame:", self.character.frame,
+            "frame_count:", self.frame_count,
+            "frames:", self.frames
+        )
     def exit(self, e):
         self.character.dir = 0
         self.character.is_attacking = False
         self.character.is_succeeded_attack = False
         self.character.frame = 0.0
         self.character.attack_hitbox.rect = (0, 0, 0, 0)
-        self.attack_key = None
+        if self.attack_key is None:
+         self.attack_key = None
+        else:
+         if self.character.dir != 0:
+             self.frames = self.character.image.move_jump_attacks.get(
+                 self.attack_key, {}
+             ).get('frames', [])
+         else:
+             self.frames = self.character.image.jump_attacks.get(
+                 self.attack_key, {}
+             ).get('frames', [])
+        self.frame_count = len(self.frames)
 
     def do(self):
         # 애니 진행 및 중력 처리
@@ -542,11 +576,11 @@ class AirAttack:
             self.character.state_machine.handle_state_event(('LAND', None))
         self.character.xPos += self.character.vx * game_framework.frame_time
     def draw(self):
+        if not self.frames or self.frame_count <= 0:
+            return
         sx = self.character.xPos - common.palace_map.window_left - 50 - 1
-        self.character.update_hitbox(self.character.body_hitbox,
-                                     self.character.image.jump_move_motion_list[int(self.character.frame)])
-        self.character.image.draw_by_frame_num(self.frames[int(self.character.frame)], sx,
-                                               self.character.yPos, self.character.face_dir)
+        self.character.update_hitbox(self.character.body_hitbox, self.character.image.jump_move_motion_list[int(self.character.frame)])
+        self.character.image.draw_by_frame_num(self.frames[int(self.character.frame)], sx, self.character.yPos, self.character.face_dir)
 
 class SitAttack:
     def __init__(self, character):
@@ -559,10 +593,18 @@ class SitAttack:
     def enter(self, e):
         self.character.is_sit = True
         self.character.frame = 0.0
-        for k in ('rp', 'lp', 'rk', 'lk'):
-            if e[1].key == self.character.keymap.get(k):
-                self.attack_key = k
-                break
+        # 네트워크에서 전달한 공격 키 이름 처리
+        self.attack_key = None
+
+        if e is not None and len(e) > 1:
+            if isinstance(e[1], str):
+                self.attack_key = e[1]
+
+            elif e[1] is not None and hasattr(e[1], 'key'):
+                for k in ('rp', 'lp', 'rk', 'lk'):
+                    if e[1].key == self.character.keymap.get(k):
+                        self.attack_key = k
+                        break
         self.frames = self.character.image.sit_attacks.get(self.attack_key, {}).get('frames', [])
         self.offset = self.character.image.sit_attacks.get(self.attack_key, {}).get('offsets', [])
         self.frame_count = len(self.frames)
@@ -1085,6 +1127,7 @@ class Character:
     def update(self):
         #self.xPos = clamp(50, self.xPos, common.palace_map.cw - 1 - 50)
         self.state_machine.update()
+
 
     def draw(self):
         self.state_machine.draw()
