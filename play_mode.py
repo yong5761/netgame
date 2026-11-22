@@ -266,26 +266,22 @@ def wait_round_start():
     pass
 
 
-
+    if not net_state.is_connected:
+        return
 instant_tick_time = 0.016
 # 패킷 송신
 def send_tick_packet():
-    if not net_state.is_connected:
-        return
 
     my_character = common.characters[net_state.my_player_num]
     keys = get_key_mask()
-    # my_player_num
-    if net_state.my_player_num == 0:
-        flag = common.c1.get_flag()
-    else:
-        flag = common.c2.get_flag()
+    # 네트워크로는 어떤 위치에서든 1P 컨트롤
+    flag = 0
+    for key in pressed_keys:
+        mask = packet.KEY_TO_MASK_P1.get(key, 0)
+        flag |= mask
+
     seq = net_state.send_seq
-
     frame = max(0, min(255, int(my_character.frame)))
-
-    print(f"state = ", my_character.get_state_id())
-
     body = packet.pack_tick_c2s(
         net_state.send_seq,
         net_state.my_player_num,

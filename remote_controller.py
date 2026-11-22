@@ -8,6 +8,7 @@ class RemoteController: # AIController 자리에 들어간다
   self.ch = character
   self.packet_data = None
   self.state = STATE_IDLE
+  self.last_state = STATE_IDLE
   self.state_map = self.ch.state_map
  def apply_tick(self, data):
   # 서버에서 받은 패킷 저장
@@ -26,16 +27,24 @@ class RemoteController: # AIController 자리에 들어간다
   state_id = data["state"]
   # 프레임 수정, 상태 수정
   new_state = self.state_map.get(state_id)
-  if new_state is not None:
-   if ch.state_machine.cur_state != state_id:
-    ch.state_machine.cur_state.exit(('NETWORK', None))
-    ch.state_machine.cur_state = new_state
-    ch.state_machine.cur_state.enter(None)
-
+  # 공격 구분
   ch.frame = data["frame"]
-
   flag = data["flag"]
-  ch.is_attacking = bool(flag & FLAG_ATTACKING)
-  ch.is_guarding = bool(flag & FLAG_GUARDING)
-  ch.is_hitted = bool(flag & FLAG_HITTED)
-  ch.is_opponent_attacking = bool(flag & FLAG_DAMAGEABLE)
+
+
+ def attack_event(self, new_state, flag):
+  if new_state is not None and self.ch.state_machine.cur_state != new_state:
+   e = None
+   # 공격 수신시 이걸로 공격 종류 구분
+   if bool(flag & KEY_LP):
+    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lp']))
+   elif bool(flag & KEY_RP):
+    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rp']))
+   elif bool(flag & KEY_RK):
+    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rk']))
+   elif bool(flag & KEY_LK):
+    e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lk']))
+   self.ch.state_machine.handle_state_event(e)
+   self.ch.state_machine.cur_state.exit(None)
+   self.ch.state_machine.cur_state = new_state
+   self.ch.state_machine.cur_state.enter(e)

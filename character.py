@@ -88,12 +88,12 @@ def dead(e):
 
 class Idle:
     def __init__(self, character):
-        self.character =character
+        self.character = character
         pass
     def enter(self, e):
-        self.character.anim_tick=0
-        self.character.frame =0
-        self.character.jump_frame=0
+        self.character.anim_tick = 0
+        self.character.frame = 0
+        self.character.jump_frame = 0
         pass
     def exit(self,e):
         pass
@@ -1093,6 +1093,7 @@ class Character:
         #self.font.draw(self.xPos - 60, self.yPos + 150, f'(is_hitted : {self.is_hitted}, combo_count : {self.combo_count})', (255, 255, 0))
         #self.font.draw(self.xPos - 60, self.yPos + 150,f'(combo_count : {self.combo_count})', (255, 255, 0))
         #self.font.draw(sx - 60, self.yPos + 150, f'(hp, atk : {self.hp, self.atk})', (255, 255, 0))
+
     def handle_event(self, event):
         # 키 입력 처리 및 마지막 up/down 시각 기록
         if self.hp <=0:
