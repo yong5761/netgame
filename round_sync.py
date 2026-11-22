@@ -1,3 +1,4 @@
+
 import common
 import packet
 import net_state
@@ -26,7 +27,6 @@ def handle_round_end(data):
 
     # 라운드 종료 후 처리
     common.round_over_timer = 3.0
-
 
 # 4바이트 상태 보고 생성 함수
 def build_hit_report(victim, attacker, dmg, guarding):

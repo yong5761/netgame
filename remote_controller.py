@@ -1,46 +1,82 @@
+from operator import truediv
+from types import SimpleNamespace
+from pico2d import *
+from packet import *
 import common
-import net_state
-import packet
 
 class RemoteController: # AIController 자리에 들어간다
  def __init__(self, character):
-  self.character = character
-  self.data = None
-
- def apply_tick(self, tick):
-  # 서버에서 받은 상대 플레이어 상태 저장
-  self.data = tick
-
+  self.ch = character
+  self.packet_data = None
+  self.state = STATE_IDLE
+  self.last_state = STATE_IDLE
+  self.state_map = self.ch.state_map
+ def apply_tick(self, data):
+  # 서버에서 받은 패킷 저장
+  self.packet_data = data
  def update(self):
-  if self.data is None:
+  if self.packet_data is None:
    return
-  ch = self.character
-  data = self.data
+  ch = self.ch
+  data = self.packet_data
 
+  # FSM 상태 동기화
+  state_id = data["state"]
+  new_state = self.state_map.get(state_id)
+  flag = data["flag"]
+
+  if new_state is not None and self.ch.state_machine.cur_state != new_state:
+    e = None
+    # 공격 수신시 이걸로 공격 종류 구분
+    if bool(flag & KEY_LP):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lp']))
+    elif bool(flag & KEY_RP):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rp']))
+    elif bool(flag & KEY_RK):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['rk']))
+    elif bool(flag & KEY_LK):
+     e = ('INPUT', SimpleNamespace(type=SDL_KEYDOWN, key=self.ch.keymap['lk']))
+    else:
+     e = ('NETWORK', None)
+    self.ch.state_machine.cur_state.exit(None)
+    self.ch.state_machine.cur_state = new_state
+    self.ch.state_machine.cur_state.enter(e)
   # 상태 동기화
   ch.xPos = data["x"]
   ch.yPos = data["y"]
   ch.face_dir = data["face"]
-  # FSM 상태 동기화
-  state_id = data["state"]
-  next_state = ch.get_state_object(state_id)
+  # 공격 구분, 프레임 수정
+  ch.frame = data["frame"]
+ def apply_hit(self, data):
+  victim_num = data['victim']
+  attacker_num = data['attacker']
+  data['damage']
+  data['hp']
+  data['knock_x']
+  victim_num = data["victim"]
+  attacker_num = data["attacker"]
 
-  if next_state is not None:
-   current_state = ch.state_machine.cur_state
+  # 플레이어 번호 검사
+  if victim_num not in (0, 1) or attacker_num not in (0, 1):
+   return
 
-   if current_state != next_state:
-    current_state.exit(("NETWORK", next_state))
-    next_state.enter(("NETWORK", current_state))
-    ch.state_machine.cur_state = next_state
+  victim = common.characters[victim_num]
+  attacker = common.characters[attacker_num]
 
- def apply_state(self, state):
-  ch = self.character
-  ch.state = state
+  # 공격 성공 처리
+  attacker.is_succeeded_attack = True
+  attacker.attack_hitbox.reset_rect()
 
-  # 공격 및 방어 관련 플래그
-  ch.is_attacking = state in (
-   packet.STATE_NORMAL_ATTACK,
-   packet.STATE_AIR_ATTACK,
-   packet.STATE_SIT_ATTACK,
-   packet.STATE_COMBO_ATTACK
-  )
+  # 서버에서 계산한 HP 적용
+  victim.hp = data["hp"]
+
+  # 실제 피해가 발생한 경우
+  if data["damage"] > 0:
+   victim.is_hitted = True
+
+   # 서버에서 전달한 넉백 적용
+   victim.xPos += data["knock_x"]
+
+   # 피격 애니메이션 실행
+   victim.state_machine.handle_state_event(('HITTED', None))
+  pass
