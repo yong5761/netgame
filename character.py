@@ -7,7 +7,7 @@ from character_frame import *
 from character_frame import CHARACTER_WIDTH_SCALE, CHARACTER_HEIGHT_SCALE
 import common
 import packet
-
+from net_state import is_connected
 common.hitbox_manager = HitBoxManager()
 
 PIXEL_PER_METER = 10.0/0.15 #10 픽셀당 30cm로 설정
@@ -88,12 +88,12 @@ def dead(e):
 
 class Idle:
     def __init__(self, character):
-        self.character =character
+        self.character = character
         pass
     def enter(self, e):
-        self.character.anim_tick=0
-        self.character.frame =0
-        self.character.jump_frame=0
+        self.character.anim_tick = 0
+        self.character.frame = 0
+        self.character.jump_frame = 0
         pass
     def exit(self,e):
         pass
@@ -226,9 +226,10 @@ class MoveJump:
             self.character.state_machine.handle_state_event(('GUARD', None))
             return
         if self.character.dir == 1:
-            self.character.frame += self.character.face_dir * FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
+            self.character.frame += FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
         else:
-            self.character.frame -= self.character.face_dir * FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
+            self.character.frame -= FRAMES_PER_MOVE_JUMP_ACTION * MOVE_JUMP_ACTION_PER_TIME * game_framework.frame_time
+        self.character.frame = max(0.0, min(self.character.frame, self.character.image.jump_move_frames - 1))
 
         self.character.vy += GRAVITY_PPS2 * game_framework.frame_time
         self.character.yPos += self.character.vy * game_framework.frame_time
@@ -453,10 +454,18 @@ class NormalAttack:
     def enter(self, e):
         self.character.frame = 0.0
         self.character.is_attacking = True
-        for k in ('rp', 'lp', 'rk', 'lk'):
-            if e[1].key == self.character.keymap.get(k):
-                self.attack_key = k
-                break
+        # 네트워크에서 전달한 공격 키 이름 처리
+        self.attack_key = None
+
+        if e is not None and len(e) > 1:
+            if isinstance(e[1], str):
+                self.attack_key = e[1]
+
+            elif e[1] is not None and hasattr(e[1], 'key'):
+                for k in ('rp', 'lp', 'rk', 'lk'):
+                    if e[1].key == self.character.keymap.get(k):
+                        self.attack_key = k
+                        break
         self.frames = self.character.image.normal_attacks.get(self.attack_key, {}).get('frames', [])
         self.frame_count = len(self.frames)
     def exit(self, e):
@@ -483,7 +492,9 @@ class NormalAttack:
 
     def draw(self):
         sx = self.character.xPos - common.palace_map.window_left - 50 - 1
-        self.character.image.draw_by_frame_num(self.frames[int(self.character.frame)], sx,
+        print(self.character.frame, self.frame_count, )
+        print(max(0, min(int(self.character.frame), self.frame_count - 1)))
+        self.character.image.draw_by_frame_num(self.frames[max(0, min(int(self.character.frame), len(self.frames) - 1))], sx,
                                                self.character.yPos, self.character.face_dir)
 
 class AirAttack:
@@ -496,23 +507,47 @@ class AirAttack:
     def enter(self, e):
         self.character.frame = 0.0
         self.character.is_attacking = True
-        for k in ('rp', 'lp', 'rk', 'lk'):
-            if e[1].key == self.character.keymap.get(k):
-                self.attack_key = k
-                break
+        # 네트워크에서 전달한 공격 키 이름 처리
+        self.attack_key = None
+
+        if e is not None and len(e) > 1:
+            if isinstance(e[1], str):
+                self.attack_key = e[1]
+
+            elif e[1] is not None and hasattr(e[1], 'key'):
+                for k in ('rp', 'lp', 'rk', 'lk'):
+                    if e[1].key == self.character.keymap.get(k):
+                        self.attack_key = k
+                        break
         if self.character.dir != 0:
             self.frames = self.character.image.move_jump_attacks.get(self.attack_key, {}).get('frames', [])
         else:
             self.frames = self.character.image.jump_attacks.get(self.attack_key, {}).get('frames', [])
         self.frame_count = len(self.frames)
-
+        print(
+            "attack_key:", self.attack_key,
+            "frame:", self.character.frame,
+            "frame_count:", self.frame_count,
+            "frames:", self.frames
+        )
     def exit(self, e):
         self.character.dir = 0
         self.character.is_attacking = False
         self.character.is_succeeded_attack = False
         self.character.frame = 0.0
         self.character.attack_hitbox.rect = (0, 0, 0, 0)
-        self.attack_key = None
+        if self.attack_key is None:
+         self.attack_key = None
+        else:
+         if self.character.dir != 0:
+             self.frames = self.character.image.move_jump_attacks.get(
+                 self.attack_key, {}
+             ).get('frames', [])
+         else:
+             self.frames = self.character.image.jump_attacks.get(
+                 self.attack_key, {}
+             ).get('frames', [])
+        self.frame_count = len(self.frames)
 
     def do(self):
         # 애니 진행 및 중력 처리
@@ -541,11 +576,11 @@ class AirAttack:
             self.character.state_machine.handle_state_event(('LAND', None))
         self.character.xPos += self.character.vx * game_framework.frame_time
     def draw(self):
+        if not self.frames or self.frame_count <= 0:
+            return
         sx = self.character.xPos - common.palace_map.window_left - 50 - 1
-        self.character.update_hitbox(self.character.body_hitbox,
-                                     self.character.image.jump_move_motion_list[int(self.character.frame)])
-        self.character.image.draw_by_frame_num(self.frames[int(self.character.frame)], sx,
-                                               self.character.yPos, self.character.face_dir)
+        self.character.update_hitbox(self.character.body_hitbox, self.character.image.jump_move_motion_list[int(self.character.frame)])
+        self.character.image.draw_by_frame_num(self.frames[int(self.character.frame)], sx, self.character.yPos, self.character.face_dir)
 
 class SitAttack:
     def __init__(self, character):
@@ -558,10 +593,18 @@ class SitAttack:
     def enter(self, e):
         self.character.is_sit = True
         self.character.frame = 0.0
-        for k in ('rp', 'lp', 'rk', 'lk'):
-            if e[1].key == self.character.keymap.get(k):
-                self.attack_key = k
-                break
+        # 네트워크에서 전달한 공격 키 이름 처리
+        self.attack_key = None
+
+        if e is not None and len(e) > 1:
+            if isinstance(e[1], str):
+                self.attack_key = e[1]
+
+            elif e[1] is not None and hasattr(e[1], 'key'):
+                for k in ('rp', 'lp', 'rk', 'lk'):
+                    if e[1].key == self.character.keymap.get(k):
+                        self.attack_key = k
+                        break
         self.frames = self.character.image.sit_attacks.get(self.attack_key, {}).get('frames', [])
         self.offset = self.character.image.sit_attacks.get(self.attack_key, {}).get('offsets', [])
         self.frame_count = len(self.frames)
@@ -850,6 +893,12 @@ class Character:
         self.keep_sit_down_last_frame = False
         self.time_out_and_down = lambda e: (e[0] == 'TIME_OUT') and self.down_pressed
         self.time_out_and_not_down = lambda e: (e[0] == 'TIME_OUT') and (not self.down_pressed)
+        self.time_out_and_key = lambda e: (e[0] == 'TIME_OUT' and (self.fwd_pressed or self.back_pressed))
+        self.time_out_and_idle = lambda e: (e[0] == 'TIME_OUT'
+                and not self.fwd_pressed
+                and not self.back_pressed
+                and not self.down_pressed
+        )
         self.can_combo = lambda e: (e[0] == 'ENABLE_COMBO') and self.is_enable_combo
 
         self.is_attacking = False
@@ -874,6 +923,25 @@ class Character:
         self.GET_HIT = GetHit(self)
         self.COMBO_ATTACK = ComboAttack(self)
         self.DEAD = Dead(self)
+
+        self.state_map = {
+            self.IDLE: packet.STATE_IDLE,
+            self.WALK: packet.STATE_WALK,
+            self.JUMP: packet.STATE_JUMP,
+            self.MOVE_JUMP: packet.STATE_MOVE_JUMP,
+            self.RUN: packet.STATE_RUN,
+            self.RUN_JUMP: packet.STATE_RUN_JUMP,
+            self.BACK_DASH: packet.STATE_BACK_DASH,
+            self.SIT_DOWN: packet.STATE_SIT_DOWN,
+            self.SIT_UP: packet.STATE_SIT_UP,
+            self.NORMAL_ATTACK: packet.STATE_NORMAL_ATTACK,
+            self.AIR_ATTACK: packet.STATE_AIR_ATTACK,
+            self.SIT_ATTACK: packet.STATE_SIT_ATTACK,
+            self.GUARD: packet.STATE_GUARD,
+            self.GET_HIT: packet.STATE_GET_HIT,
+            self.COMBO_ATTACK: packet.STATE_COMBO_ATTACK,
+            self.DEAD: packet.STATE_DEAD
+        }
 
         def mk_key_pred(key_const, sdl_type):
             def pred(e):
@@ -979,6 +1047,9 @@ class Character:
                     time_out: self.IDLE,self.down_down:self.SIT_DOWN,self.fwd_down:self.WALK,self.back_down:self.WALK,self.up_down:self.JUMP
                 },
                 self.NORMAL_ATTACK:{
+                    self.time_out_and_down: self.SIT_DOWN,
+                    self.time_out_and_key: self.WALK,
+                    self.time_out_and_idle: self.IDLE,
                     time_out:self.IDLE, self.can_combo: self.COMBO_ATTACK
                 },
                 self.AIR_ATTACK:{
@@ -995,6 +1066,9 @@ class Character:
                     time_out:self.IDLE, hitted:self.GET_HIT,dead:self.DEAD
                 },
                 self.COMBO_ATTACK:{
+                    self.time_out_and_down: self.SIT_DOWN,
+                    self.time_out_and_key: self.WALK,
+                    self.time_out_and_idle: self.IDLE,
                     time_out:self.IDLE, self.can_combo: self.COMBO_ATTACK
                 },
                 self.DEAD:{
@@ -1054,6 +1128,7 @@ class Character:
         #self.xPos = clamp(50, self.xPos, common.palace_map.cw - 1 - 50)
         self.state_machine.update()
 
+
     def draw(self):
         self.state_machine.draw()
         sx = self.xPos - common.palace_map.window_left - 50 - 1
@@ -1061,6 +1136,7 @@ class Character:
         #self.font.draw(self.xPos - 60, self.yPos + 150, f'(is_hitted : {self.is_hitted}, combo_count : {self.combo_count})', (255, 255, 0))
         #self.font.draw(self.xPos - 60, self.yPos + 150,f'(combo_count : {self.combo_count})', (255, 255, 0))
         #self.font.draw(sx - 60, self.yPos + 150, f'(hp, atk : {self.hp, self.atk})', (255, 255, 0))
+
     def handle_event(self, event):
         # 키 입력 처리 및 마지막 up/down 시각 기록
         if self.hp <=0:
@@ -1131,26 +1207,11 @@ class Character:
             hitbox.update((sx - w + offset_width, self.yPos - h, CHARACTER_WIDTH_SCALE * w - offset_width, CHARACTER_HEIGHT_SCALE*h))
 
     def get_state_id(self):
-        state_map = {
-            self.IDLE: packet.STATE_IDLE,
-            self.WALK: packet.STATE_WALK,
-            self.JUMP: packet.STATE_JUMP,
-            self.MOVE_JUMP: packet.STATE_MOVE_JUMP,
-            self.RUN: packet.STATE_RUN,
-            self.RUN_JUMP: packet.STATE_RUN_JUMP,
-            self.BACK_DASH: packet.STATE_BACK_DASH,
-            self.SIT_DOWN: packet.STATE_SIT_DOWN,
-            self.SIT_UP: packet.STATE_SIT_UP,
-            self.NORMAL_ATTACK: packet.STATE_NORMAL_ATTACK,
-            self.AIR_ATTACK: packet.STATE_AIR_ATTACK,
-            self.SIT_ATTACK: packet.STATE_SIT_ATTACK,
-            self.GUARD: packet.STATE_GUARD,
-            self.GET_HIT: packet.STATE_GET_HIT,
-            self.COMBO_ATTACK: packet.STATE_COMBO_ATTACK,
-            self.DEAD: packet.STATE_DEAD
-        }
-        current_state = self.state_machine.cur_state
-        return state_map.get(current_state, 0)
+        for state_id, state_obj in self.state_map.items():
+            if self.state_machine.cur_state == state_obj:
+                return state_id
+
+        return packet.STATE_IDLE
 
     def get_flag(self):
         flag = 0

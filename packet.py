@@ -45,7 +45,7 @@ KEY_RK      = 0x40
 KEY_DOWN    = 0x08
 KEY_LK      = 0x80
 #
-KEY_TO_MASK = {
+KEY_TO_MASK_P1 = {
 # P1
     SDLK_a: KEY_LEFT,
     SDLK_d: KEY_RIGHT,
@@ -54,7 +54,9 @@ KEY_TO_MASK = {
     SDLK_f: KEY_LP,
     SDLK_g: KEY_RP,
     SDLK_b: KEY_RK,
-    SDLK_c: KEY_LK,
+    SDLK_c: KEY_LK
+}
+KEY_TO_MASK_P2 = {
 # P2
     SDLK_LEFT: KEY_LEFT,    
     SDLK_RIGHT: KEY_RIGHT,
@@ -248,11 +250,13 @@ def pack_player_state(x, y, face, state, frame, flag):
 def unpack_player_state(body):
     if len(body) != PLAYER_STATE_SIZE:
         raise ValueError("잘못된 PLAYER_STATE_SIZE 패킷 크기")
+
     data = struct.unpack(PLAYER_STATE_FORMAT, body)
+
     return {
         "x": data[0], "y": data[1],
-        "face": data[3], "state": data[4],
-        "frame": data[5], "flag": data[6]
+        "face": data[2], "state": data[3],
+        "frame": data[4], "flag": data[5]
     }
 # TickS2CBody
 def pack_tick_s2c(seq, p1, p2, hp, time_left):
@@ -266,12 +270,13 @@ def unpack_tick_s2c(body):
         "p1": {
             "x": data[1], "y": data[2],
             "face": data[3], "state": data[4],
+            "frame": data[5], "flag": data[6],
         },
         "p2": {
             "x": data[7], "y": data[8],
             "face": data[9], "state": data[10],
+            "frame": data[11], "flag": data[12],
         },
-        "p1_hp": data[13],
-        "p2_hp": data[14],
+        "p1_hp": data[13], "p2_hp": data[14],
         "remaining_time": data[15]
     }
