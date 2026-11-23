@@ -211,13 +211,16 @@ void SessionManager::OnTickReceived(int playerNum, const TickC2SBody& body, cons
 }
 
 void SessionManager::BroadcastTick(SOCKET udpSock) {
-    // m_stateLock: m_latest, m_hp 복사
+    // m_stateLock: m_latest, m_hp, m_seqInitialized 복사
     PlayerState states[2];
     uint8_t     hp[2];
+    bool        stateValid[2];
     EnterCriticalSection(&m_stateLock);
     memcpy(states, m_latest, sizeof(states));
-    hp[0] = m_hp[0];
-    hp[1] = m_hp[1];
+    hp[0]         = m_hp[0];
+    hp[1]         = m_hp[1];
+    stateValid[0] = m_seqInitialized[0];
+    stateValid[1] = m_seqInitialized[1];
     LeaveCriticalSection(&m_stateLock);
 
     // m_sessionLock: matchStarted + UDP 주소 복사
@@ -235,6 +238,7 @@ void SessionManager::BroadcastTick(SOCKET udpSock) {
     LeaveCriticalSection(&m_sessionLock);
 
     if (!matchStarted) return;
+    if (!stateValid[0] || !stateValid[1]) return;
 
     if (!m_sendStarted) {
         m_sendStarted = true;
