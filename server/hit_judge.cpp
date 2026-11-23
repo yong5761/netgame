@@ -1,4 +1,5 @@
 #include "hit_judge.h"
+#include "session_manager.h"
 #include <cstdio>
 #include <stdlib.h>
 #include <string.h>
@@ -7,26 +8,45 @@ void HitJudge::HandleReport(int attackerNum, int defenderNum) {
     printf("[HitJudge] HandleReport 호출\n");
 
     m_valid = false;
-
-    if (!m_ready)
-        return;
     m_ready = false;
+
+    if (g_sessionMgr == nullptr)
+        return;
+
+    if (attackerNum < 0 || attackerNum >= 2 ||
+        defenderNum < 0 || defenderNum >= 2)
+        return;
+
+    if (attackerNum == defenderNum)
+        return;
+
+    if (!g_sessionMgr->GetPendingReport(m_report))
+        return;
+
+    if (!g_sessionMgr->GetPendingState(0, m_playerStates[0]))
+        return;
+
+    if (!g_sessionMgr->GetPendingState(1, m_playerStates[1]))
+        return;
+
+    m_senderNum = g_sessionMgr->GetPendingSender();
 
     if (m_report.attacker != attackerNum ||
         m_report.victim != defenderNum)
         return;
 
     m_now = GetTickCount();
-
-    Verify();
-
-    if (!m_valid)
-        return;
+    m_ready = true;
 }
 
 void HitJudge::Verify() {
     printf("[HitJudge] Verify 호출\n");
     m_valid = false;
+
+    if (!m_ready)
+        return;
+
+    m_ready = false;
 
     if (m_minDist <= 0.f)
         return;
@@ -45,8 +65,6 @@ void HitJudge::Verify() {
 
     if (m_report.guard > 1)
         return;
-    if (m_report.guard == 1)
-        return;
 
     if (m_report.damage != 5 && m_report.damage != 10)
         return;
@@ -59,6 +77,16 @@ void HitJudge::Verify() {
         return;
 
     CheckCooldown();
+    
+    if (!m_valid)
+        return;
+
+    int victim = m_report.victim;
+
+    m_lastHitTick[victim] = m_now;
+    m_hasLastHit[victim] = true;
+
+    SendResult(victim);
 }
 
 void HitJudge::CheckDistance() {
@@ -94,20 +122,19 @@ void HitJudge::CheckCooldown() {
 void HitJudge::SendResult(int defenderNum) {
     printf("[HitJudge] SendResult 호출\n");
 
+    if (g_sessionMgr == nullptr||!m_valid)
+        return;
+
     if (defenderNum < 0 || defenderNum >= 2)
         return;
-    if (m_result.victim != defenderNum)
+
+    if (defenderNum!=m_report.victim)
         return;
 
-    HitResultBody body = m_result;
-    body.Hton();
-
-    PacketHeader header{};
-    header.size = htons(static_cast<uint16_t>(sizeof(HitResultBody)));
-    header.type = PKT_HIT_RESULT;
-
-    char buffer[sizeof(PacketHeader) + sizeof(HitResultBody)];
-
-    memcpy(buffer, &header, sizeof(header));
-    memcpy(buffer + sizeof(header), &body, sizeof(body));
+    g_sessionMgr->OnHitVerified(
+        m_report.attacker,
+        defenderNum,
+        m_report.damage,
+        m_report.guard
+    );
 }

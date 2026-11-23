@@ -1,5 +1,7 @@
 from pico2d import draw_rectangle
 import round_sync
+import common
+import net_state
 
 class HitBox:
     def __init__(self, owner, hb_kind:str, rect:tuple[float, float, float, float]):
@@ -133,6 +135,11 @@ class HitBoxManager:
         return queued
 
     def detect_attack_hits(self):
+        if common.game_mode == 'Network':
+            if net_state.is_connected:
+                self.detect_online_hit(common.characters, net_state.my_player_num)
+            return
+
         body_boxes = [hb for hb in self.hitboxes if hb.hb_kind == 'body']
         body_box_1, body_box_2 = body_boxes[0], body_boxes[1]
 
