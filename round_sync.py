@@ -17,13 +17,9 @@ def handle_round_end(data):
     # 라운드 종료 상태
     common.round_over = True
 
-    # 서버에서 전달한 승자 정보
-    winner = data["winner"]
-
-    if winner == 0:
-        common.p1_win_counter.add_win()
-    elif winner == 1:
-        common.p2_win_counter.add_win()
+    # 서버가 보낸 누적 승수를 캐릭터에 반영
+    common.c1.win_count = data['win_count1']
+    common.c2.win_count = data['win_count2']
 
     # 라운드 종료 후 처리
     common.round_over_timer = 3.0
