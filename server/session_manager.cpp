@@ -31,6 +31,12 @@ void SessionManager::Init() {
     m_hitReportLogged  = false;
     memset(&m_pendingReport,  0, sizeof(m_pendingReport));
     memset(m_pendingStates,   0, sizeof(m_pendingStates));
+    m_spawnKnown[0] = m_spawnKnown[1] = false;
+    memset(m_spawnX, 0, sizeof(m_spawnX));
+    m_winCount[0] = m_winCount[1] = 0;
+    m_round     = 0;
+    m_roundOver = false;
+    m_roundEndAt = 0;
     InitializeCriticalSection(&m_stateLock);
     InitializeCriticalSection(&m_sessionLock);
     m_initialized = true;
@@ -89,6 +95,12 @@ void SessionManager::Remove(int playerNum) {
         m_pendingSender = -1;
         memset(&m_pendingReport, 0, sizeof(m_pendingReport));
         memset(m_pendingStates,  0, sizeof(m_pendingStates));
+        m_spawnKnown[0] = m_spawnKnown[1] = false;
+        memset(m_spawnX, 0, sizeof(m_spawnX));
+        m_winCount[0] = m_winCount[1] = 0;
+        m_round     = 0;
+        m_roundOver = false;
+        m_roundEndAt = 0;
         LeaveCriticalSection(&m_stateLock);
     }
     printf("[SessionManager] Player %d 접속 종료\n", playerNum);
@@ -137,6 +149,10 @@ void SessionManager::OnCharSelected(int playerNum, uint8_t charNum) {
     if (doSend) {
         EnterCriticalSection(&m_stateLock);
         m_hp[0] = m_hp[1] = MAX_HP;
+        m_winCount[0] = m_winCount[1] = 0;
+        m_round     = 1;
+        m_roundOver = false;
+        m_roundEndAt = 0;
         LeaveCriticalSection(&m_stateLock);
 
         MatchStartBody body;
@@ -203,6 +219,10 @@ void SessionManager::OnTickReceived(int playerNum, const TickC2SBody& body, cons
         m_latest[playerNum].state   = body.state;
         m_latest[playerNum].frame   = body.frame;
         m_latest[playerNum].flag    = body.flag;
+        if (firstPacket && !m_spawnKnown[playerNum]) {
+            m_spawnX[playerNum]     = body.x;
+            m_spawnKnown[playerNum] = true;
+        }
     }
     LeaveCriticalSection(&m_stateLock);
 
@@ -356,11 +376,16 @@ void SessionManager::OnHitVerified(int attackerNum, int defenderNum,
     LeaveCriticalSection(&m_sessionLock);
     if (!matchStarted) return;
 
-    // m_stateLock: 체력 차감 및 결과값 계산 후 즉시 해제
-    uint8_t  finalDamage = 0;
-    uint8_t  remainHp    = 0;
-    int16_t  attackerX   = 0;
-    int16_t  victimX     = 0;
+    // m_stateLock: 체력 차감, 라운드 종료 판정, 결과값 복사 후 즉시 해제
+    uint8_t  finalDamage   = 0;
+    uint8_t  remainHp      = 0;
+    int16_t  attackerX     = 0;
+    int16_t  victimX       = 0;
+    bool     roundJustEnded = false;
+    uint8_t  winner         = 0;
+    uint8_t  winCount[2]    = {};
+    uint8_t  matchOver      = 0;
+    uint8_t  roundNum       = 0;
 
     EnterCriticalSection(&m_stateLock);
     if (m_hp[defenderNum] == 0) {
@@ -369,9 +394,20 @@ void SessionManager::OnHitVerified(int attackerNum, int defenderNum,
     }
     finalDamage = (damage > m_hp[defenderNum]) ? m_hp[defenderNum] : damage;
     m_hp[defenderNum] -= finalDamage;
-    remainHp   = m_hp[defenderNum];
-    attackerX  = m_latest[attackerNum].x;
-    victimX    = m_latest[defenderNum].x;
+    remainHp  = m_hp[defenderNum];
+    attackerX = m_latest[attackerNum].x;
+    victimX   = m_latest[defenderNum].x;
+    if (remainHp == 0 && !m_roundOver) {
+        m_roundOver  = true;
+        m_roundEndAt = GetTickCount64();
+        winner       = static_cast<uint8_t>(attackerNum);
+        m_winCount[winner]++;
+        winCount[0]  = m_winCount[0];
+        winCount[1]  = m_winCount[1];
+        matchOver    = (m_winCount[winner] >= 2) ? 1 : 0;
+        roundNum     = m_round;
+        roundJustEnded = true;
+    }
     LeaveCriticalSection(&m_stateLock);
 
     // 두 락 모두 해제된 상태에서 패킷 생성 및 송신
@@ -383,12 +419,94 @@ void SessionManager::OnHitVerified(int attackerNum, int defenderNum,
     printf("[OnHitVerified] P%d → P%d 데미지 %d, 남은 체력 %d\n",
            attackerNum, defenderNum, (int)finalDamage, (int)remainHp);
 
+    // 1. PKT_HIT_RESULT 먼저
     HitResultBody result{};
     result.victim   = static_cast<uint8_t>(defenderNum);
     result.attacker = static_cast<uint8_t>(attackerNum);
     result.damage   = finalDamage;
     result.hp       = remainHp;
     result.knockX   = knockX;
-
     SendHitResult(-1, result);
+
+    // 2. PKT_ROUND_END — HitResult 다음
+    if (roundJustEnded) {
+        printf("[RoundEnd] 라운드 %d 승자 P%d (%d:%d) 매치종료=%d\n",
+               (int)roundNum, (int)winner,
+               (int)winCount[0], (int)winCount[1], (int)matchOver);
+
+        RoundEndBody reBody{};
+        reBody.winner      = winner;
+        reBody.winCount[0] = winCount[0];
+        reBody.winCount[1] = winCount[1];
+        reBody.matchOver   = matchOver;
+        reBody.Hton();
+
+        SOCKET socks[2] = { INVALID_SOCKET, INVALID_SOCKET };
+        EnterCriticalSection(&m_sessionLock);
+        for (int i = 0; i < 2; i++) {
+            if (m_sessions[i] && m_sessions[i]->IsAlive())
+                socks[i] = m_sessions[i]->GetSock();
+        }
+        LeaveCriticalSection(&m_sessionLock);
+
+        for (int i = 0; i < 2; i++) {
+            if (socks[i] != INVALID_SOCKET)
+                BuildAndSend(socks[i], PKT_ROUND_END, &reBody,
+                             static_cast<uint16_t>(sizeof(reBody)));
+        }
+    }
+}
+
+void SessionManager::CheckRoundTransition() {
+    bool matchStarted = false;
+    EnterCriticalSection(&m_sessionLock);
+    matchStarted = m_matchStarted;
+    LeaveCriticalSection(&m_sessionLock);
+    if (!matchStarted) return;
+
+    bool    shouldStart = false;
+    uint8_t newRound    = 0;
+    int16_t spawnX[2]   = {};
+
+    EnterCriticalSection(&m_stateLock);
+    bool matchOver = (m_winCount[0] >= 2 || m_winCount[1] >= 2);
+    if (m_roundOver && !matchOver) {
+        ULONGLONG now = GetTickCount64();
+        if (now - m_roundEndAt >= ROUND_INTERVAL_MS) {
+            m_hp[0] = m_hp[1] = MAX_HP;
+            m_round++;
+            m_roundOver  = false;
+            newRound     = m_round;
+            spawnX[0]    = m_spawnX[0];
+            spawnX[1]    = m_spawnX[1];
+            shouldStart  = true;
+        }
+    }
+    LeaveCriticalSection(&m_stateLock);
+
+    if (!shouldStart) return;
+
+    SOCKET socks[2] = { INVALID_SOCKET, INVALID_SOCKET };
+    EnterCriticalSection(&m_sessionLock);
+    for (int i = 0; i < 2; i++) {
+        if (m_sessions[i] && m_sessions[i]->IsAlive())
+            socks[i] = m_sessions[i]->GetSock();
+    }
+    LeaveCriticalSection(&m_sessionLock);
+
+    printf("[RoundStart] 라운드 %d 시작\n", (int)newRound);
+
+    RoundStartBody rsBody{};
+    rsBody.startX[0] = spawnX[0];
+    rsBody.startX[1] = spawnX[1];
+    rsBody.hp[0]     = MAX_HP;
+    rsBody.hp[1]     = MAX_HP;
+    rsBody.round     = newRound;
+    rsBody.Hton();
+
+    for (int i = 0; i < 2; i++) {
+        if (socks[i] != INVALID_SOCKET)
+            BuildAndSend(socks[i], PKT_ROUND_START, &rsBody,
+                         static_cast<uint16_t>(sizeof(rsBody)));
+    }
 }

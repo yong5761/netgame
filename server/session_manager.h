@@ -8,9 +8,10 @@
 
 class SessionManager {
 public:
-    static const uint8_t  MAX_HP     = 100;
-    static const int16_t  KNOCK_GUARD = 12;
-    static const int16_t  KNOCK_HIT   = 40;
+    static const uint8_t   MAX_HP           = 100;
+    static const int16_t   KNOCK_GUARD       = 12;
+    static const int16_t   KNOCK_HIT         = 40;
+    static const ULONGLONG ROUND_INTERVAL_MS = 3000;
     void Init();
     void Destroy();
 
@@ -29,6 +30,7 @@ public:
     void SendHitResult(int playerNum, const HitResultBody& body);
     void OnHitVerified(int attackerNum, int defenderNum,
                        uint8_t damage, bool guarded);
+    void CheckRoundTransition();
 
 private:
     ClientSession*   m_sessions[2];
@@ -50,6 +52,14 @@ private:
     PlayerState      m_pendingStates[2];
     int              m_pendingSender;
     bool             m_hitReportLogged;
+
+    int16_t          m_spawnX[2];
+    bool             m_spawnKnown[2];
+
+    uint8_t          m_winCount[2];
+    uint8_t          m_round;
+    bool             m_roundOver;
+    ULONGLONG        m_roundEndAt;
 };
 
 extern SessionManager* g_sessionMgr;
