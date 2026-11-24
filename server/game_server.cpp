@@ -171,6 +171,7 @@ void GameServer::TickSendLoop()
     while (!m_stopFlag) {
         Sleep(50);
         m_sessionMgr.BroadcastTick(m_udpSock);
+        m_sessionMgr.CheckRoundTransition();
     }
     printf("[TickSendLoop] 종료\n");
 }
