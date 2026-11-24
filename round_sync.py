@@ -24,6 +24,25 @@ def handle_round_end(data):
     # 라운드 종료 후 처리
     common.round_over_timer = 3.0
 
+    # 매치 종료 여부는 서버가 정한다
+    common.match_over = bool(data['match_over'])
+
+
+def handle_round_start(data):
+    # 서버가 보낸 시작 위치와 체력으로 라운드 초기화
+    common.c1, common.c2 = common.characters
+
+    common.c1.reset(data['start_x1'], 120)
+    common.c2.reset(data['start_x2'], 120)
+    common.c1.hp = data['hp1']
+    common.c2.hp = data['hp2']
+
+    common.game_timer.total_time = 0.0
+    common.palace_map.window_left = int(common.palace_map.w / 2 - common.palace_map.cw / 2)
+
+    common.round_over = False
+    common.round_over_timer = 0.0
+
 # 4바이트 상태 보고 생성 함수
 def build_hit_report(victim, attacker, dmg, guarding):
     return bytes((victim, attacker, dmg, int(guarding)))

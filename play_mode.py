@@ -177,6 +177,11 @@ def update():
     # 네트워크 게임 데이터 수신
     if common.game_mode == 'Network' and net_state.is_connected:
         recv_tick_packet()
+        # 매치 종료는 서버가 보낸 값으로만 판단
+        if common.match_over:
+            common.match_over = False
+            game_framework.change_mode(intro_mode)
+            return
     # 기존 게임 업데이트
     game_world.update()
 
@@ -329,4 +334,7 @@ def recv_tick_packet():
             data = packet.unpack_round_end(body)
             # A가 구현한 경기 종료 반영 함수
             handle_round_end(data)
-            reset_round()
+        elif packet_type == packet.PKT_ROUND_START and len(body) >= packet.ROUND_START_SIZE:
+            data = packet.unpack_round_start(body)
+            # 서버가 보낸 다음 라운드 시작 반영
+            handle_round_start(data)

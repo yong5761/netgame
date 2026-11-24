@@ -17,6 +17,9 @@ hitbox_manager = None
 ai_player = None
 stage_num = 0
 net_client_obj = None
+round_over = False
+round_over_timer = 0.0
+match_over = False
 server_ip = '127.0.0.1'
 KEYMAP_P1 ={
     'left' :SDLK_a,
