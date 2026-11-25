@@ -81,6 +81,8 @@ class NetClient:
  def send_packet(self, pkt_type, body): # TCP
   if not net_state.is_connected or self.tcp_socket is None:
    return False
+  if body is None:
+   body = b''
   try:
    # 헤더 생성 (본문 크기 + 패킷 종류)
    header = packet.pack_header(len(body), pkt_type)
@@ -184,5 +186,7 @@ class NetClient:
          else:
              print(f"잘못된 패킷 타입 번호: {pkt_type}")
 
+     except queue.Empty:
+         continue
      except Exception as e:
          print(f"송신 스레드 오류: {e}")
