@@ -10,7 +10,7 @@ class HitJudge {
 public:
     void HandleReport(int attackerNum, int defenderNum);
     void Verify();
-
+    void ResetRound();
 private:
     void CheckDistance();
     void CheckCooldown();

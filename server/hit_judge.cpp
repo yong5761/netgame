@@ -138,3 +138,17 @@ void HitJudge::SendResult(int defenderNum) {
         m_report.guard
     );
 }
+
+void HitJudge::ResetRound() {
+    for (int i = 0; i < 2; ++i) {
+        m_lastHitTick[i] = 0;
+        m_hasLastHit[i] = false;
+        m_playerStates[i] = {};
+    }
+
+    m_report = {};
+    m_senderNum = -1;
+    m_now = 0;
+    m_valid = false;
+    m_ready = false;
+}
