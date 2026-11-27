@@ -274,6 +274,8 @@ def wait_round_start():
     if not net_state.is_connected:
         return
 instant_tick_time = 0.016
+ATTACK_KEY_MASK = {'lp': packet.KEY_LP, 'rp': packet.KEY_RP, 'rk': packet.KEY_RK, 'lk': packet.KEY_LK}
+ATTACK_MASK_ALL = packet.KEY_LP | packet.KEY_RP | packet.KEY_RK | packet.KEY_LK
 # 패킷 송신
 def send_tick_packet():
 
@@ -284,6 +286,10 @@ def send_tick_packet():
     for key in pressed_keys:
         mask = packet.KEY_TO_MASK_P1.get(key, 0)
         flag |= mask
+    # 공격 중에는 키를 뗐어도 공격 종류를 계속 실어 보낸다
+    attack_key = getattr(my_character.state_machine.cur_state, 'attack_key', None)
+    if isinstance(attack_key, str) and attack_key in ATTACK_KEY_MASK:
+        flag = (flag & ~ATTACK_MASK_ALL) | ATTACK_KEY_MASK[attack_key]
 
     seq = net_state.send_seq
     frame = max(0, min(255, int(my_character.frame)))
