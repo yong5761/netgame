@@ -98,6 +98,9 @@ def init():
     common.palace_map = PalaceMap()
     common.game_timer = Timer()
     common.hitbox_manager = HitBoxManager()
+    common.round_over = False
+    common.round_over_timer = 0.0
+    common.match_over = False
 
     game_world.add_object(common.palace_map)
     game_world.add_object(common.game_timer, 1)

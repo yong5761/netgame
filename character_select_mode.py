@@ -21,7 +21,11 @@ p_move_step = 175
 min_x = 210
 max_x = 580
 def init():
-    global image, p1_image, p2_image, p1_x, p1_y, p2_x, p2_y
+    global image, p1_image, p2_image, p1_x, p1_y, p2_x, p2_y, p1_selected, p2_selected
+    p1_selected = False
+    p2_selected = False
+    p1_rect[0] = 0
+    p2_rect[0] = 67
     image = load_image('GameMode_Image/Game_Character_Select.png')
     p1_image = load_image('GameMode_Image/Game_Character_Select_Player.png')
     p1_x, p1_y = 228, 242
