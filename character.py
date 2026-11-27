@@ -492,8 +492,6 @@ class NormalAttack:
 
     def draw(self):
         sx = self.character.xPos - common.palace_map.window_left - 50 - 1
-        print(self.character.frame, self.frame_count, )
-        print(max(0, min(int(self.character.frame), self.frame_count - 1)))
         self.character.image.draw_by_frame_num(self.frames[max(0, min(int(self.character.frame), len(self.frames) - 1))], sx,
                                                self.character.yPos, self.character.face_dir)
 

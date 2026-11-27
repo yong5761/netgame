@@ -1,8 +1,11 @@
 from operator import truediv
 from types import SimpleNamespace
 from pico2d import *
+
+import net_state
 from packet import *
 import common
+import time
 
 class RemoteController: # AIController 자리에 들어간다
  def __init__(self, character):
@@ -11,9 +14,18 @@ class RemoteController: # AIController 자리에 들어간다
   self.state = STATE_IDLE
   self.last_state = STATE_IDLE
   self.state_map = self.ch.state_map
+  self.prexPos = character.xPos
+  self.preyPos = character.yPos
+  self.lasttime = time.monotonic()
+  net_state.udp_intervals.append(0.05)
  def apply_tick(self, data):
   # 서버에서 받은 패킷 저장
   self.packet_data = data
+  # 패킷을 받은 시점 저장
+  net_state.udp_intervals.append(time.monotonic() - self.lasttime )
+  self.lasttime = time.monotonic()
+  self.prexPos = self.ch.xPos
+  self.preyPos = self.ch.yPos
  def update(self):
   if self.packet_data is None:
    return
@@ -42,11 +54,21 @@ class RemoteController: # AIController 자리에 들어간다
     self.ch.state_machine.cur_state = new_state
     self.ch.state_machine.cur_state.enter(e)
   # 상태 동기화
-  ch.xPos = data["x"]
-  ch.yPos = data["y"]
   ch.face_dir = data["face"]
-  # 공격 구분, 프레임 수정
+  # 위치 보간
+  avg_time = sum(net_state.udp_intervals) / len(net_state.udp_intervals)
+  t = 0
+  if avg_time > 0:
+   t = min(max((time.monotonic() - self.lasttime) / avg_time, 0), 1)
+  x = self.prexPos + (data["x"] - self.prexPos) * t
+  y = self.preyPos + (data["y"] - self.preyPos) * t
+  ch.xPos = x
+  ch.yPos = y
+  # 공격 구분, 프레임
   ch.frame = data["frame"]
+
+
+
  def apply_hit(self, data):
   victim_num = data['victim']
   attacker_num = data['attacker']

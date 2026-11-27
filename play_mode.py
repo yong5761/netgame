@@ -9,13 +9,17 @@ from map import PalaceMap, Timer, HpBar, WinCount
 from ai_controller import AIController
 from character_frame import *
 from interaction import HitBoxManager
-
+import time
 import queue
 import packet
 import net_state
+from net_state import is_connected
+from packet import pack_hit_report
 from round_sync import *
 from remote_controller import RemoteController
-TICK_INTERVAL = 0.017# 1/frame
+import os
+font = None
+TICK_INTERVAL = 0.05# 1/frame
 tick_timer = 0.0
 
 pressed_keys = set()# 현재 누르고 있는 키
@@ -73,7 +77,7 @@ def handle_events():
                 # 키 입력 상태 저장
                 pressed_keys.add(event.key)
                 # 멀티인 경우
-                if common.game_mode == 'Network' and net_state.is_connected:
+                if common.game_mode == 'Network':
                     # 내 캐릭터에만 이벤트 전달
                     my_character = common.characters[net_state.my_player_num]
                     my_character.handle_event(event)
@@ -85,7 +89,7 @@ def handle_events():
             pressed_keys.discard(event.key)
 
             # 멀티인 경우
-            if common.game_mode == 'Network' and net_state.is_connected:
+            if common.game_mode == 'Network':
                 my_character = common.characters[net_state.my_player_num]
                 my_character.handle_event(event)
 
@@ -95,6 +99,12 @@ def handle_events():
                     c.handle_event(event)
 # 초기 설정
 def init():
+    global font
+
+    if font is None:
+        font_path = os.path.join(os.path.dirname(__file__), 'ENCR10B.TTF')
+        font = load_font(font_path, 30)
+
     common.palace_map = PalaceMap()
     common.game_timer = Timer()
     common.hitbox_manager = HitBoxManager()
@@ -128,7 +138,7 @@ def init():
         elif common.p2_character_num == 2:
             common.c2 = Character(YuriFrameInfo(), keymap=common.KEYMAP_P2, x=700, y=120)
 
-    if common.game_mode == 'Network' and net_state.is_connected:
+    if common.game_mode == 'Network':
         if common.p1_character_num == 0:
             common.c1 = Character(ShingoFrameInfo(), keymap=common.KEYMAP_P1, x=100, y=120)
         elif common.p1_character_num == 1:
@@ -145,7 +155,7 @@ def init():
             common.ai_player = RemoteController(common.c2)
         else:
             common.ai_player = RemoteController(common.c1)
-        wait_round_start()
+
 
 
 
@@ -171,12 +181,22 @@ def init():
     for c in common.characters:
         game_world.add_object(c)
 
+    net_state.last_udp_recv_time = time.monotonic()
+    net_state.is_udp_timeout = False
+
 def update():
     global round_over, round_over_timer,round_reset_timer
 
     # 네트워크 게임 데이터 수신
-    if common.game_mode == 'Network' and net_state.is_connected:
+    if common.game_mode == 'Network':
         recv_tick_packet()
+        if not net_state.is_connected:
+            game_framework.change_mode(intro_mode)
+        # 매치 종료는 서버가 보낸 값으로만 판단
+        if common.match_over:
+            common.match_over = False
+            game_framework.change_mode(intro_mode)
+            return
     # 기존 게임 업데이트
     game_world.update()
 
@@ -222,18 +242,21 @@ def update():
             common.hitbox_manager.detect_is_opponent_attacking()# 공격판정 확인
             common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])#  마주보게 하고
             common.hitbox_manager.detect_attack_hits()# 양측 피격판정
-    elif common.game_mode == 'Network' and net_state.is_connected:
-        # 서버에서 받은 네트워크 정보 업데이트
+    elif common.game_mode == 'Network':
+        # 서버에서 받은 네트워크 정보로 업데이트
         common.ai_player.update()
 
         if common.hitbox_manager:
+            common.hitbox_manager.detect_body_overlaps()
             common.hitbox_manager.detect_is_opponent_attacking()
-            common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])# 내 캐릭터의 방향만 구하기 함수는 아직 미구현.
-            common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)
-            # detect_attack_hits은 로컬 전용 함수, 리턴이 없다.
+            common.hitbox_manager.update_face_dir(common.characters[0], common.characters[1])
+            common.hitbox_manager.detect_online_hit(common.characters, net_state.my_player_num)# 내 공격판정
+
+
+
 
     # 네트워크 입력 전송
-    if common.game_mode == 'Network' and net_state.is_connected:
+    if common.game_mode == 'Network':
         send_tick_packet()
 
 def draw():
@@ -241,10 +264,22 @@ def draw():
     game_world.render()
     if debug_hitbox:
         common.hitbox_manager.debug_draw()
+    if common.round_over and font is not None and common.stage_winner is not None:
+        # 반투명 배경
+        #draw_rectangle(0, 0, get_canvas_width(), get_canvas_height())
+        # 라운드 종료 문구
+        message = f"{common.stage_winner}P WIN!"
+        width = get_canvas_width() // 2
+        font.draw(width - 50, 300, message, (0, 0, 255))
+
+        message = f"ROUND OVER"
+        font.draw(width - 80, 250, message, (255, 0, 0))
+
     update_canvas()
 
+
 def finish():
-    if common.game_mode == 'Network' and net_state.is_connected:
+    if common.game_mode == 'Network' and is_connected:
         net_state.send_queue.put((packet.PKT_LEAVE, None))
     game_world.clear()
     pass
@@ -261,13 +296,7 @@ def get_key_mask():
             keys |= packet.KEY_TO_MASK_P2.get(key, 0)
 
     return keys
-def wait_round_start():
-    # ROUND_START 처리 [A]
-    pass
 
-
-    if not net_state.is_connected:
-        return
 instant_tick_time = 0.016
 # 패킷 송신
 def send_tick_packet():
@@ -309,7 +338,7 @@ def recv_tick_packet():
         packet_type, body = packet_data
 
         if packet_type == packet.PKT_TICK_S2C and len(body) >= packet.TICK_S2C_SIZE:
-
+            print("PKT_TICK_S2C")
             data = packet.unpack_tick_s2c(body)
             # 라운드 공통 정보
             apply_round_sync(data)
@@ -326,7 +355,26 @@ def recv_tick_packet():
             common.ai_player.apply_hit(data)
             # 피격 결과 반영
         elif packet_type == packet.PKT_ROUND_END and len(body) >= packet.ROUND_END_SIZE:
+            print("packet.PKT_ROUND_END")
             data = packet.unpack_round_end(body)
+            common.stage_winner = data["winner"]
             # A가 구현한 경기 종료 반영 함수
             handle_round_end(data)
-            reset_round()
+        elif packet_type == packet.PKT_ROUND_START and len(body) >= packet.ROUND_START_SIZE:
+            data = packet.unpack_round_start(body)
+            # 서버가 보낸 다음 라운드 시작 반영
+            handle_round_start(data)
+    # 연결 끊김 확인
+    now = time.monotonic()
+    elapsed = now - net_state.last_udp_recv_time
+
+    if elapsed >= net_state.UDP_TIMEOUT:
+        if net_state.is_connected:
+            print("UDP 연결 끊김 감지")
+            net_state.is_connected = False
+
+    elif elapsed >= net_state.UDP_WARNING:
+        print("UDP 수신 지연")
+
+    else:
+        net_state.is_connected = True
