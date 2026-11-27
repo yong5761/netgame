@@ -37,6 +37,7 @@ void SessionManager::Init() {
     m_round     = 0;
     m_roundOver = false;
     m_roundEndAt = 0;
+    m_judgeResetPending = false;
     InitializeCriticalSection(&m_stateLock);
     InitializeCriticalSection(&m_sessionLock);
     m_initialized = true;
@@ -101,6 +102,7 @@ void SessionManager::Remove(int playerNum) {
         m_round     = 0;
         m_roundOver = false;
         m_roundEndAt = 0;
+        m_judgeResetPending = false;
         LeaveCriticalSection(&m_stateLock);
     }
     printf("[SessionManager] Player %d 접속 종료\n", playerNum);
@@ -153,6 +155,7 @@ void SessionManager::OnCharSelected(int playerNum, uint8_t charNum) {
         m_round     = 1;
         m_roundOver = false;
         m_roundEndAt = 0;
+        m_judgeResetPending = true;
         LeaveCriticalSection(&m_stateLock);
 
         MatchStartBody body;
@@ -301,11 +304,18 @@ void SessionManager::OnHitReport(int senderNum, const HitReportBody& report) {
     }
 
     EnterCriticalSection(&m_stateLock);
+    if (m_roundOver) {
+        LeaveCriticalSection(&m_stateLock);
+        return;
+    }
+    bool resetJudge = m_judgeResetPending;
+    m_judgeResetPending = false;
     m_pendingReport = report;
     memcpy(m_pendingStates, m_latest, sizeof(m_pendingStates));
     m_pendingSender = senderNum;
     LeaveCriticalSection(&m_stateLock);
 
+    if (resetJudge) m_judge.ResetRound();
     m_judge.HandleReport(attackerNum, defenderNum);
     m_judge.Verify();
 }
@@ -480,6 +490,7 @@ void SessionManager::CheckRoundTransition() {
             spawnX[0]    = m_spawnX[0];
             spawnX[1]    = m_spawnX[1];
             shouldStart  = true;
+            m_judgeResetPending = true;
         }
     }
     LeaveCriticalSection(&m_stateLock);

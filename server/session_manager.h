@@ -60,6 +60,7 @@ private:
     uint8_t          m_round;
     bool             m_roundOver;
     ULONGLONG        m_roundEndAt;
+    bool             m_judgeResetPending;
 };
 
 extern SessionManager* g_sessionMgr;
