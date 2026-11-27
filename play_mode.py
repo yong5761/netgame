@@ -108,6 +108,9 @@ def init():
     common.palace_map = PalaceMap()
     common.game_timer = Timer()
     common.hitbox_manager = HitBoxManager()
+    common.round_over = False
+    common.round_over_timer = 0.0
+    common.match_over = False
 
     game_world.add_object(common.palace_map)
     game_world.add_object(common.game_timer, 1)
@@ -192,6 +195,11 @@ def update():
         recv_tick_packet()
         if not net_state.is_connected:
             game_framework.change_mode(intro_mode)
+        # 매치 종료는 서버가 보낸 값으로만 판단
+        if common.match_over:
+            common.match_over = False
+            game_framework.change_mode(intro_mode)
+            return
         # 매치 종료는 서버가 보낸 값으로만 판단
         if common.match_over:
             common.match_over = False
@@ -298,6 +306,8 @@ def get_key_mask():
     return keys
 
 instant_tick_time = 0.016
+ATTACK_KEY_MASK = {'lp': packet.KEY_LP, 'rp': packet.KEY_RP, 'rk': packet.KEY_RK, 'lk': packet.KEY_LK}
+ATTACK_MASK_ALL = packet.KEY_LP | packet.KEY_RP | packet.KEY_RK | packet.KEY_LK
 # 패킷 송신
 def send_tick_packet():
 
@@ -308,6 +318,10 @@ def send_tick_packet():
     for key in pressed_keys:
         mask = packet.KEY_TO_MASK_P1.get(key, 0)
         flag |= mask
+    # 공격 중에는 키를 뗐어도 공격 종류를 계속 실어 보낸다
+    attack_key = getattr(my_character.state_machine.cur_state, 'attack_key', None)
+    if isinstance(attack_key, str) and attack_key in ATTACK_KEY_MASK:
+        flag = (flag & ~ATTACK_MASK_ALL) | ATTACK_KEY_MASK[attack_key]
 
     seq = net_state.send_seq
     frame = max(0, min(255, int(my_character.frame)))
@@ -338,7 +352,7 @@ def recv_tick_packet():
         packet_type, body = packet_data
 
         if packet_type == packet.PKT_TICK_S2C and len(body) >= packet.TICK_S2C_SIZE:
-            print("PKT_TICK_S2C")
+
             data = packet.unpack_tick_s2c(body)
             # 라운드 공통 정보
             apply_round_sync(data)

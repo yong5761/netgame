@@ -10,20 +10,19 @@ class HitJudge {
 public:
     void HandleReport(int attackerNum, int defenderNum);
     void Verify();
-
+    void ResetRound();
 private:
     void CheckDistance();
     void CheckCooldown();
     void SendResult(int defenderNum);
 
-    DWORD m_lastHitTick[2];
+    DWORD m_lastHitTick[2]{};
     float m_minDist{MAX_X_DISTANCE};
     DWORD m_cooldownMs{MIN_COOLDOWN_MS};
     bool m_hasLastHit[2]{};
 
     HitReportBody m_report{};
     PlayerState m_playerStates[2]{};
-    HitResultBody m_result{};
 
     int m_senderNum{ -1 };
     DWORD m_now{};
