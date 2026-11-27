@@ -88,6 +88,9 @@ void ClientSession::RecvLoop() {
                 } else {
                     printf("[Session %d] PKT_HIT_REPORT 크기 불일치: %u\n", m_playerNum, bodySize);
                 }
+            } else if (pktType == static_cast<uint8_t>(PKT_LEAVE)) {
+                printf("[Session %d] PKT_LEAVE 수신 — 접속 종료\n", m_playerNum);
+                m_alive = false;
             } else {
                 printf("[Session %d] pkt type=%u body=%u bytes\n",
                        m_playerNum, pktType, bodySize);
@@ -100,6 +103,7 @@ void ClientSession::RecvLoop() {
 
     m_alive = false;
     m_mgr->Remove(m_playerNum); // 세션 목록에서 자신을 제거하고 스레드 종료
+    Close();
 }
 
 // 스레드 프로시저. RecvLoop 반환 후 session 메모리를 소유해 해제
