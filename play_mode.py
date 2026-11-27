@@ -38,11 +38,11 @@ def reset_round():
     round_over = False
 
     common.c1, common.c2 = common.characters
-
-    if common.c1.hp <= 0 :
-        common.c2.win_count += 1
-    elif common.c2.hp <= 0 :
-        common.c1.win_count += 1
+    if common.game_mode != 'Network':
+        if common.c1.hp <= 0 :
+            common.c2.win_count += 1
+        elif common.c2.hp <= 0 :
+            common.c1.win_count += 1
 
     common.game_timer.total_time = 0.0
     common.c1.reset(100,120)
@@ -50,7 +50,7 @@ def reset_round():
     common.c1.xPos = common.palace_map.w / 2 - 200
     common.c2.xPos = common.palace_map.w / 2 + 300
     common.palace_map.window_left = int(common.palace_map.w / 2 - common.palace_map.cw / 2)
-    if common.c1.win_count >=2 or common.c2.win_count >= 2:
+    if common.c1.win_count >= 2 or common.c2.win_count >= 2:
         game_framework.change_mode(intro_mode)
 
 def handle_events():
@@ -194,17 +194,8 @@ def update():
     if common.game_mode == 'Network':
         recv_tick_packet()
         if not net_state.is_connected:
+            # 끊기면 인트로 모드로 전환
             game_framework.change_mode(intro_mode)
-        # 매치 종료는 서버가 보낸 값으로만 판단
-        if common.match_over:
-            common.match_over = False
-            game_framework.change_mode(intro_mode)
-            return
-        # 매치 종료는 서버가 보낸 값으로만 판단
-        if common.match_over:
-            common.match_over = False
-            game_framework.change_mode(intro_mode)
-            return
     # 기존 게임 업데이트
     game_world.update()
 
@@ -272,6 +263,7 @@ def draw():
     game_world.render()
     if debug_hitbox:
         common.hitbox_manager.debug_draw()
+
     if common.round_over and font is not None and common.stage_winner is not None:
         # 반투명 배경
         #draw_rectangle(0, 0, get_canvas_width(), get_canvas_height())
@@ -287,10 +279,8 @@ def draw():
 
 
 def finish():
-    if common.game_mode == 'Network' and is_connected:
-        net_state.send_queue.put((packet.PKT_LEAVE, None))
+    net_state.send_queue.put((packet.PKT_LEAVE, None))
     game_world.clear()
-    pass
 
 
 # ----------------------------------------------------------------
@@ -369,15 +359,17 @@ def recv_tick_packet():
             common.ai_player.apply_hit(data)
             # 피격 결과 반영
         elif packet_type == packet.PKT_ROUND_END and len(body) >= packet.ROUND_END_SIZE:
-            print("packet.PKT_ROUND_END")
             data = packet.unpack_round_end(body)
             common.stage_winner = data["winner"]
             # A가 구현한 경기 종료 반영 함수
             handle_round_end(data)
+            #reset_round()
         elif packet_type == packet.PKT_ROUND_START and len(body) >= packet.ROUND_START_SIZE:
             data = packet.unpack_round_start(body)
             # 서버가 보낸 다음 라운드 시작 반영
+            reset_round()
             handle_round_start(data)
+
     # 연결 끊김 확인
     now = time.monotonic()
     elapsed = now - net_state.last_udp_recv_time

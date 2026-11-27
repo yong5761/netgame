@@ -1,6 +1,6 @@
 import queue
 import threading
-
+from collections import deque
 my_player_num   = 0                 # 내가 1P(0) 인지 2P(1) 인지
 
 is_connected    = False             # 서버 연결 = 멀티플레이
@@ -16,3 +16,9 @@ queue_lock      = threading.Lock()  # 큐 동기화
 last_recv_seq   = -1                # UDP 순번. 이보다 작으면 버린다
 
 send_seq        = 0                 # 전송할 UDP순번
+
+udp_intervals = deque()
+
+UDP_TIMEOUT = 1000
+
+UDP_WARNING = 300
